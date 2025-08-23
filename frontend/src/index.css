@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@tailwind utilities;
+@plugin "flowbite-react/plugin/tailwindcss";
+@source "../.flowbite-react/class-list.json";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+
+.primary-btn{
+    @apply rounded-full cursor-pointer;
+}
+
+*{
+    font-family: "Source Sans Pro", sans-serif;
+}
