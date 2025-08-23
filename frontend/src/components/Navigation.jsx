@@ -1,48 +1,91 @@
-import React from 'react'
-import { DarkThemeToggle,Button, Navbar, NavbarBrand, NavbarCollapse, NavbarLink, NavbarToggle, useThemeMode } from "flowbite-react";
+import React from "react";
+import {
+    DarkThemeToggle,
+    Button,
+    Navbar,
+    NavbarBrand,
+    NavbarCollapse,
+    NavbarLink,
+    NavbarToggle,
+    useThemeMode,
+} from "flowbite-react";
+import { NavLink } from "react-router";
+
 import logo from "../assets/logo.svg";
-import  logodark from "../assets/logo-dark.svg"
-
-
+import logodark from "../assets/logo-dark.svg";
 
 const Navigation = () => {
-    // Import useTheme from flowbite-react
-
     const { mode } = useThemeMode();
 
-    console.log(mode);
-    
-
     return (
-        <Navbar fluid className='w-10/12 mx-auto bg-white dark:bg-[#003049] rounded-full mt-3'>
-            <NavbarBrand href="/">
+        <Navbar
+            fluid
+            className="fixed left-1/2 top-3 transform -translate-x-1/2 w-10/12 bg-white dark:bg-[#003049] rounded-full z-50"
+        >
+            <NavbarBrand as={NavLink} to="/">
                 <img
                     src={mode === "dark" ? logodark : logo}
                     className="mr-3 h-5 sm:h-7"
                     alt="Citi Sevak"
                 />
             </NavbarBrand>
+
+            {/* Right side */}
             <div className="flex md:order-2 items-center space-x-2">
-                <Button className='primary-btn text-xl' color="primary">Signup</Button>
+                <Button
+                    as={NavLink}
+                    to="/signup"
+                    className="primary-btn text-xl"
+                    color="primary"
+                >
+                    Signup
+                </Button>
                 <DarkThemeToggle />
                 <NavbarToggle />
             </div>
-            <NavbarCollapse >
-                <NavbarLink href="#" active className='text-xl'>
+
+            {/* Collapsible Menu */}
+            <NavbarCollapse>
+                <NavbarLink
+                    as={NavLink}
+                    to="/"
+                    end
+                    className={({ isActive }) =>
+                        `text-xl ${isActive ? "text-blue-600 dark:text-yellow-300 font-semibold" : ""}`
+                    }
+                >
                     Home
                 </NavbarLink>
-                <NavbarLink href="#" className='text-xl'>
+                <NavbarLink
+                    as={NavLink}
+                    to="/about"
+                    className={({ isActive }) =>
+                        `text-xl ${isActive ? "text-blue-600 dark:text-yellow-300 font-semibold" : ""}`
+                    }
+                >
                     About
                 </NavbarLink>
-                <NavbarLink href="#" className='text-xl'>
+                <NavbarLink
+                    as={NavLink}
+                    to="/complaints"
+                    className={({ isActive }) =>
+                        `text-xl ${isActive ? "text-blue-600 dark:text-yellow-300 font-semibold" : ""}`
+                    }
+                >
                     Complaints
                 </NavbarLink>
-                <NavbarLink href="#" className='text-xl'>
+                <NavbarLink
+                    as={NavLink}
+                    to="/contact"
+                    className={({ isActive }) =>
+                        `text-xl ${isActive ? "text-blue-600 dark:text-yellow-300 font-semibold" : ""}`
+                    }
+                >
                     Contact
                 </NavbarLink>
             </NavbarCollapse>
         </Navbar>
-    )
-}
+    );
+};
 
-export default Navigation
+export default Navigation;

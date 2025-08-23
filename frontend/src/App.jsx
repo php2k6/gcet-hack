@@ -1,5 +1,13 @@
-import Navigation from './components/Navigation';
-import { createTheme, ThemeProvider } from "flowbite-react";
+import { BrowserRouter as Router, Routes, Route } from "react-router";
+import Navigation from "./components/Navigation";
+import { ThemeProvider,createTheme } from "flowbite-react";
+
+// Pages
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Complaints from "./pages/Complaints";
+import Contact from "./pages/Contact";
+import Signup from "./pages/Signup";
 
 export default function App() {
 
@@ -62,8 +70,20 @@ export default function App() {
 
   return (
     <>
-      <ThemeProvider theme={customTheme}>
-        <Navigation />
+      <ThemeProvider theme={customTheme} defaultTheme="system" enableSystem>
+        <Router>
+          {/* Navbar always visible */}
+          <Navigation />
+
+          {/* Declarative routing */}
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/complaints" element={<Complaints />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/signup" element={<Signup />} />
+          </Routes>
+        </Router>
       </ThemeProvider>
     </>
   );
