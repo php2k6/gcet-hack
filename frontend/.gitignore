@@ -1,0 +1,10 @@
+# add gitignore for vite+react
+node_modules/
+dist/
+.vite/
+
+# env
+.env
+
+.flowbite-react
+.vscode
