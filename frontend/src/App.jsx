@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navigation from "./components/Navigation";
 import { ThemeProvider,createTheme } from "flowbite-react";
 
@@ -6,7 +6,7 @@ import { ThemeProvider,createTheme } from "flowbite-react";
 import Home from "./pages/Home";
 import About from "./pages/About";
 import Complaints from "./pages/Complaints";
-import Contact from "./pages/Contact";
+import Heatmap from "./pages/Heatmap";
 import Signup from "./pages/Signup";
 
 export default function App() {
@@ -74,13 +74,14 @@ export default function App() {
         <Router>
           {/* Navbar always visible */}
           <Navigation />
+          
 
           {/* Declarative routing */}
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
+            <Route path="/heatmap" element={<Heatmap />} />
             <Route path="/complaints" element={<Complaints />} />
-            <Route path="/contact" element={<Contact />} />
             <Route path="/signup" element={<Signup />} />
           </Routes>
         </Router>
