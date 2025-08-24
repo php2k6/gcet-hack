@@ -15,6 +15,6 @@
     font-family: "Source Sans Pro", sans-serif;
 }
 
-body{
-    height: 200vh;
+section{
+    @apply mt-20;
 }
