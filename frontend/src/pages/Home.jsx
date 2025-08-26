@@ -1,24 +1,20 @@
 import React from "react";
-import Glance from "../components/Glance";
-import Hero from "../components/Hero";
-import ScrollHero from "../components/ScrollHero"
+// import Glance from "../components/Glance";
+// import Hero from "../components/Hero";
+import ScrollHero from "../components/ScrollHero";
 import ChatWidget from "../components/ChatWidget";
 
 const Home = () => {
-    return (
-
-        <main>
-            {/* <Hero /> */}
-            <ScrollHero/>
-            {/* <Glance />
+  return (
+    <main>
+      {/* <Hero /> */}
+      <ScrollHero />
+      {/* <Glance />
             <Glance />
             <Glance /> */}
-            <ChatWidget />
-
-        </main>
-
-
-    );
+      <ChatWidget />
+    </main>
+  );
 };
 
 export default Home;
