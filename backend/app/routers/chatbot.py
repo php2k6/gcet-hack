@@ -4,7 +4,7 @@ import g4f
 import g4f.Provider
 import sys
 import os
-from app.utils import get_query_response
+from app.util import get_query_response
 
 router = APIRouter(
     prefix="/chatbot",         # optional: adds /users to all routes

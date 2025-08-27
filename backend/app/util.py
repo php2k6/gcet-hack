@@ -6,7 +6,7 @@ import os
 
 def get_query_response(query):
     client = Client()
-    test_model = "gpt-4o"
+    test_model = "gpt-4.1"
     test_prompt = query
     base_dir = os.path.dirname(__file__)  # this will be 'app/' directory
     prompt_path = os.path.join(base_dir, "system_prompt.txt")
