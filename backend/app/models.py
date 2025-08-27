@@ -3,13 +3,14 @@ from app.database import Base
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import uuid
 
 class User(Base):
     __tablename__ = "users"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password = Column(Text, nullable=False)
@@ -29,13 +30,13 @@ class User(Base):
 class Authority(Base):
     __tablename__ = "authorities"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     district = Column(String(100), nullable=False)
     contact_email = Column(String(255), nullable=False)
     contact_phone = Column(String(20), nullable=True)
     category = Column(String(100), nullable=False)  # e.g., "Water", "Roads", "Electricity"
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
     # Relationships
     issues = relationship("Issue", back_populates="authority")
@@ -44,9 +45,9 @@ class Authority(Base):
 class Issue(Base):
     __tablename__ = "issues"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    authority_id = Column(String, ForeignKey("authorities.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    authority_id = Column(UUID(as_uuid=True), ForeignKey("authorities.id"), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     status = Column(Integer, default=0)  # 0: open, 1: in progress, 2: resolved, 3: closed
@@ -66,9 +67,9 @@ class Issue(Base):
 class Vote(Base):
     __tablename__ = "votes"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    issue_id = Column(String, ForeignKey("issues.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    issue_id = Column(UUID(as_uuid=True), ForeignKey("issues.id"), nullable=False)
     
     # Relationships
     user = relationship("User", back_populates="votes")
@@ -77,8 +78,8 @@ class Vote(Base):
 class Media(Base):
     __tablename__ = "media"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    issue_id = Column(String, ForeignKey("issues.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    issue_id = Column(UUID(as_uuid=True), ForeignKey("issues.id"), nullable=False)
     path = Column(String(500), nullable=False)  # File path or URL
     
     # Relationships
@@ -87,9 +88,9 @@ class Media(Base):
 class Notification(Base):
     __tablename__ = "notifications"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    issue_id = Column(String, ForeignKey("issues.id"), nullable=False)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    issue_id = Column(UUID(as_uuid=True), ForeignKey("issues.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
     is_citizen = Column(Boolean, default=True)
@@ -102,9 +103,9 @@ class Notification(Base):
 class Award(Base):
     __tablename__ = "awards"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     is_citizen = Column(Boolean, default=True)
-    winner_id = Column(String, ForeignKey("users.id"), nullable=False)
+    winner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=func.now())
     description = Column(Text, nullable=False)
     

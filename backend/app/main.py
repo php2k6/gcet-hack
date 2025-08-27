@@ -1,14 +1,14 @@
 from fastapi import FastAPI
 from app.database import engine
 from app.models import Base
-from app.routers import chatbot
+from app.routers import chatbot, auth
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import all models to ensure they're registered
 from app import models
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Note: Using Alembic migrations instead of create_all
+# Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="GCET Hack API",
@@ -27,6 +27,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(chatbot.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 
 @app.get("/")
 def root():
