@@ -3,6 +3,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import indiaMap from "../assets/india bg upscale.jpg";
 import Glance from "./Glance";
+import GlanceScroll from "./GlanceScroll";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -83,7 +84,7 @@ export default function HeroSection() {
                 scale: 0.9,
                 duration: 0.3,
                 ease: "power2.in"
-            }, 0.7); // At 70% of timeline
+            }, 0.5); // At 70% of timeline
 
             // Phase 3: Fade in second title at 70% on left side
             tl.fromTo(secondTitleRef.current, {
@@ -96,7 +97,7 @@ export default function HeroSection() {
                 scale: 1,
                 duration: 0.3,
                 ease: "back.out(1.7)"
-            }, 0.7); // At 70% of timeline
+            }, 0.5); // At 70% of timeline
 
             // Fade out scroll hint when zoom starts
             tl.to(scrollHintRef.current, {
@@ -122,7 +123,7 @@ export default function HeroSection() {
             {/* Hero Section with Animation */}
             <section 
                 ref={sectionRef}
-                className="relative h-[300vh] dark:bg-[#001219] overflow-hidden"
+                className="relative h-[100vh] dark:bg-[#001219] overflow-hidden"
             >
                 {/* Sticky map container */}
                 <div className="sticky top-0 flex items-center justify-center h-screen overflow-hidden">
@@ -200,7 +201,7 @@ export default function HeroSection() {
                 />
             </div>
             
-            <Glance/>
+            <GlanceScroll/>
         </>
     );
 }

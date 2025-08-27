@@ -65,7 +65,9 @@ export default function App() {
         success: "text-white bg-green-600 border border-transparent enabled:hover:bg-green-700 focus:ring-4 focus:ring-green-300 disabled:hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800 dark:disabled:hover:bg-green-600",
         danger: "text-white bg-red-600 border border-transparent enabled:hover:bg-red-700 focus:ring-4 focus:ring-red-300 disabled:hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900 dark:disabled:hover:bg-red-600"
       }
-    }
+    },
+    
+    
   });
 
   return (

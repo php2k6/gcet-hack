@@ -76,9 +76,9 @@ const Navigation = () => {
 
     return (
         <Navbar
-            ref={navbarRef}    
-        fluid
-            className="fixed left-1/2 top-3 transform -translate-x-1/2 w-10/12 bg-white dark:bg-[#003049] rounded-[4px] md:rounded-full z-50  overflow-visible"
+            ref={navbarRef}
+            fluid
+            className="rounded-full fixed left-1/2 top-3 transform -translate-x-1/2 w-10/12 bg-white dark:bg-[#003049] md:rounded-full z-50  overflow-visible"
         >
             <NavbarBrand as={NavLink} to="/">
                 <img
