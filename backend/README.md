@@ -31,7 +31,7 @@ backend/
 │   │   ├── auth.py              # Authentication endpoints (6 endpoints)
 │   │   ├── users.py             # User management endpoints (7 endpoints)
 │   │   ├── issues.py            # Issues management endpoints (5 endpoints)
-│   │   ├── authorities.py       # Authorities management endpoints (2 endpoints)
+│   │   ├── authorities.py       # Authorities management endpoints (3 endpoints)
 │   │   └── chatbot.py           # Chatbot endpoints
 │   ├── schemas/                 # Pydantic models for validation
 │   │   ├── __init__.py          # Schema package initialization
@@ -49,7 +49,7 @@ backend/
 │   ├── test_auth_endpoints.py   # Authentication endpoint tests (8 tests)
 │   ├── test_user_endpoints.py   # User management endpoint tests (4 tests)
 │   ├── test_issue_endpoints.py  # Issues & media management endpoint tests (12 tests)
-│   ├── test_authority_endpoints.py # Authorities management endpoint tests (3 tests)
+│   ├── test_authority_endpoints.py # Authorities management endpoint tests (4 tests)
 │   ├── run_all_tests.py         # Test runner script
 │   ├── performance_test.py      # Load testing
 │   ├── manual_test.py           # Manual testing scripts
@@ -106,10 +106,10 @@ python tests/run_all_tests.py
 python tests/test_auth_endpoints.py    # 8/8 authentication tests
 python tests/test_user_endpoints.py   # 4/4 user management tests
 python tests/test_issue_endpoints.py  # 5/5 issues management tests
-python tests/test_authority_endpoints.py # 3/3 authorities management tests
+python tests/test_authority_endpoints.py # 4/4 authorities management tests
 ```
 
-**Current Test Status: ✅ 27/27 tests passing (100%)**
+**Current Test Status: ✅ 28/28 tests passing (100%)**
 
 ---
 
@@ -1008,11 +1008,11 @@ function createMediaLinks(mediaFiles) {
 
 ### 🏛️ Authorities Management API
 
-All authorities endpoints are prefixed with `/api/authorities`. Manage government departments and agencies.
+All authorities endpoints are prefixed with `/api/authority`. Manage government departments and agencies.
 
 #### **1. Get Authority by ID**
 ```http
-GET /api/authorities/{authority_id}
+GET /api/authority/{authority_id}
 ```
 
 **Description:** Get detailed information about a specific authority by UUID.
@@ -1044,7 +1044,7 @@ GET /api/authorities/{authority_id}
 
 #### **2. Update Authority**
 ```http
-PATCH /api/authorities/{authority_id}
+PATCH /api/authority/{authority_id}
 ```
 
 **Description:** Update authority information. Permissions: Admin or the authority user themselves.
@@ -1067,6 +1067,40 @@ Authorization: Bearer <access_token>
 ```
 
 **Response (200 OK):** Updated authority object
+
+#### **3. Delete Authority**
+```http
+DELETE /api/authority/{authority_id}
+```
+
+**Description:** Delete an authority permanently. Only administrators can delete authorities.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Permissions:** Admin only (role = 2)
+
+**Response (204 No Content)**
+
+**Error Responses:**
+- `403 Forbidden`: Only administrators can delete authorities
+- `404 Not Found`: Authority not found
+- `400 Bad Request`: Cannot delete authority with associated issues
+
+**Important Notes:**
+- Only admin users can delete authorities
+- Authorities with associated issues cannot be deleted
+- The system will check for existing issues and prevent deletion if any are found
+- Issues must be reassigned to another authority or deleted before the authority can be removed
+
+**Example Error (Authority with Issues):**
+```json
+{
+  "detail": "Cannot delete authority with 15 associated issues. Please reassign or delete issues first."
+}
+```
 
 #### **🏛️ Authority Categories**
 Common authority categories include:
@@ -1110,7 +1144,7 @@ The project includes a comprehensive test suite covering all API endpoints:
 
 - **📁 Location**: `backend/tests/`
 - **🧪 Test Files**: 4 main test scripts
-- **📊 Coverage**: 27/27 tests passing (100%)
+- **📊 Coverage**: 28/28 tests passing (100%)
 - **🚀 Easy Running**: One-command test execution
 
 ### **Test Scripts**
@@ -1131,9 +1165,9 @@ The project includes a comprehensive test suite covering all API endpoints:
 - 🎯 **Focus**: Issue reporting, status management, media attachments, role-based permissions
 
 #### **4. Authorities Management Tests (`test_authority_endpoints.py`)**
-- ✅ **3 Tests**: Authority management operations
-- 🏛️ **Endpoints**: get by ID, update authority info, access control
-- 🎯 **Focus**: Authority data management, permission validation
+- ✅ **4 Tests**: Authority management operations with delete endpoint
+- 🏛️ **Endpoints**: get by ID, update authority info, access control, delete authority (admin only)
+- 🎯 **Focus**: Authority data management, permission validation, admin-only operations
 
 #### **5. Test Runner (`run_all_tests.py`)**
 - 🎬 **Runs**: All test suites in sequence
@@ -1188,7 +1222,7 @@ python tests/test_authority_endpoints.py
 - **`app/routers/auth.py`**: 6 authentication endpoints with JWT
 - **`app/routers/users.py`**: 7 user management endpoints with role-based access
 - **`app/routers/issues.py`**: 9 issues and media management endpoints with CRUD operations and file upload
-- **`app/routers/authorities.py`**: 2 authorities management endpoints with access control
+- **`app/routers/authorities.py`**: 3 authorities management endpoints with access control
 - **`app/schemas/auth_schemas.py`**: Authentication request/response models
 - **`app/schemas/user_schemas.py`**: User management request/response models
 - **`app/schemas/issue_schemas.py`**: Issues management request/response models
@@ -1266,9 +1300,9 @@ pip install -r requirements.txt
 ✅ **Authentication System**: Complete with 6 endpoints, JWT tokens, Google OAuth  
 ✅ **User Management**: Full CRUD with role-based access control  
 ✅ **Issues Management**: Complete CRUD system with 9 endpoints, filtering, pagination, and media upload  
-✅ **Authorities Management**: Authority info management with 2 endpoints and access control  
+✅ **Authorities Management**: Complete CRUD with 3 endpoints including admin-only delete functionality  
 ✅ **Database**: PostgreSQL with UUID primary keys and proper relationships  
-✅ **Testing**: 27/27 tests passing with comprehensive coverage  
+✅ **Testing**: 28/28 tests passing with comprehensive coverage  
 ✅ **Documentation**: Complete API reference with examples  
 ✅ **Migrations**: Production-ready database schema management  
 

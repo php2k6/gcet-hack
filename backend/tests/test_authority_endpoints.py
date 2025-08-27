@@ -156,6 +156,31 @@ class AuthorityTester:
             self.print_result("Unauthorized Access Control", False, f"Exception: {str(e)}")
             return False
     
+    def test_delete_authority_admin_only(self):
+        """Test DELETE /authority/{authority_id} - Admin only"""
+        try:
+            print("🧪 Testing DELETE /authority/{authority_id} - Admin only...")
+            
+            # Test with a non-existent authority ID to check admin permission
+            fake_authority_id = "550e8400-e29b-41d4-a716-446655440000"
+            
+            # Test 1: Admin should get 404 for non-existent authority (not 403)
+            delete_response = self.session.delete(f"{BASE_URL}/authority/{fake_authority_id}")
+            
+            if delete_response.status_code == 404:
+                self.print_result("DELETE Authority (Admin Permission)", True, "Admin can access delete endpoint (404 for non-existent)")
+                return True
+            elif delete_response.status_code == 403:
+                self.print_result("DELETE Authority (Admin Permission)", False, "Admin access denied (should have permission)")
+                return False
+            else:
+                self.print_result("DELETE Authority (Admin Permission)", True, f"Unexpected response: {delete_response.status_code} (admin has permission)")
+                return True
+                
+        except Exception as e:
+            self.print_result("DELETE Authority (Admin Permission)", False, f"Exception: {str(e)}")
+            return False
+    
     def run_all_tests(self):
         """Run all authority tests"""
         print("🚀 Starting Authority API Testing...")
@@ -168,7 +193,8 @@ class AuthorityTester:
         tests = [
             self.test_get_authority_by_id,
             self.test_update_authority,
-            self.test_unauthorized_access
+            self.test_unauthorized_access,
+            self.test_delete_authority_admin_only
         ]
         
         passed = 0

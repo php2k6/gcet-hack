@@ -121,3 +121,42 @@ def update_authority(
     db.refresh(authority)
     
     return create_authority_response(authority)
+
+@router.delete("/{authority_id}", status_code=204)
+def delete_authority(
+    authority_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete authority by UUID (admin only)"""
+    
+    # Only admin can delete authorities
+    if current_user.role != 2:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can delete authorities"
+        )
+    
+    authority = db.query(Authority).filter(Authority.id == authority_id).first()
+    
+    if not authority:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Authority not found"
+        )
+    
+    # Check if authority has associated issues
+    from app.models import Issue
+    issue_count = db.query(Issue).filter(Issue.authority_id == authority_id).count()
+    
+    if issue_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete authority with {issue_count} associated issues. Please reassign or delete issues first."
+        )
+    
+    # Delete the authority
+    db.delete(authority)
+    db.commit()
+    
+    return
