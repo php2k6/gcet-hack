@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-// import indiaMap from "../assets/india bg upscale.jpg";
+import indiaMap from "../assets/india bg upscale.jpg";
 import Glance from "./Glance";
 import GlanceScroll from "./GlanceScroll";
 
