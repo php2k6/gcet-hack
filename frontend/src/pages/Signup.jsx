@@ -22,7 +22,6 @@ const Signup = () => {
                   </h1>
                 </div>
 
-                {/* Social login */}
                 <div className="mb-4 flex gap-3">
                   <button className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 transition hover:border-indigo-500 hover:shadow-md">
                     <span>
