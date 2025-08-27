@@ -9,6 +9,7 @@ import About from "./pages/About";
 import Complaints from "./pages/Complaints";
 import Heatmap from "./pages/Heatmap";
 import Signup from "./pages/Signup";
+import Login from "./pages/Login";
 
 export default function App() {
   const customTheme = createTheme({
@@ -86,6 +87,7 @@ export default function App() {
             <Route path="/heatmap" element={<Heatmap />} />
             <Route path="/complaints" element={<Complaints />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/report" element={<Report />} />
           </Routes>
         </Router>
