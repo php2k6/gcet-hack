@@ -81,6 +81,10 @@ class Media(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     issue_id = Column(UUID(as_uuid=True), ForeignKey("issues.id"), nullable=False)
     path = Column(String(500), nullable=False)  # File path or URL
+    filename = Column(String(255), nullable=True)  # Original filename
+    file_size = Column(BigInteger, nullable=True)  # Size in bytes
+    file_type = Column(String(50), nullable=True)  # MIME type
+    created_at = Column(DateTime, default=func.now())
     
     # Relationships
     issue = relationship("Issue", back_populates="media")

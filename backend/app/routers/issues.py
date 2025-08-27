@@ -1,13 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc, or_, and_, func
 from typing import Optional, List
 from datetime import datetime
 import math
+import os
+import pathlib
+import uuid as uuid_lib
 from uuid import UUID
 
 from app.database import get_db
-from app.models import Issue, User, Authority, Vote
+from app.models import Issue, User, Authority, Vote, Media
 from app.schemas.issue_schemas import (
     IssueCreateRequest, 
     IssueUpdateRequest, 
@@ -16,7 +20,8 @@ from app.schemas.issue_schemas import (
     IssueListResponse,
     IssueUserResponse,
     IssueAuthorityResponse,
-    VoteResponse
+    VoteResponse,
+    MediaResponse
 )
 from app.auth import get_current_user
 
@@ -53,6 +58,19 @@ def create_issue_response(issue: Issue) -> IssueResponse:
         ) for vote in issue.votes
     ] if issue.votes else []
     
+    # Create media responses
+    media_responses = [
+        MediaResponse(
+            id=media.id,
+            issue_id=media.issue_id,
+            path=media.path,
+            filename=media.filename,
+            file_size=media.file_size,
+            file_type=media.file_type,
+            created_at=media.created_at
+        ) for media in issue.media
+    ] if issue.media else []
+    
     return IssueResponse(
         id=issue.id,
         user_id=issue.user_id,
@@ -68,6 +86,7 @@ def create_issue_response(issue: Issue) -> IssueResponse:
         user=user_response,
         authority=authority_response,
         votes=vote_responses,
+        media=media_responses,
         vote_count=vote_count
     )
 
@@ -128,11 +147,141 @@ def create_issue(
     issue_with_relations = db.query(Issue).options(
         joinedload(Issue.user),
         joinedload(Issue.authority),
-        joinedload(Issue.votes)
+        joinedload(Issue.votes),
+        joinedload(Issue.media)
     ).filter(Issue.id == new_issue.id).first()
     
     return IssueCreateResponse(
         message="Issue created successfully",
+        issue=create_issue_response(issue_with_relations)
+    )
+
+# File upload configuration
+UPLOAD_DIRECTORY = "uploads"
+ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.pdf'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+def validate_file(file: UploadFile) -> bool:
+    """Validate uploaded file"""
+    # Check file extension
+    file_extension = pathlib.Path(file.filename).suffix.lower()
+    if file_extension not in ALLOWED_EXTENSIONS:
+        return False
+    
+    # Check file size (this is approximate, actual size checked during read)
+    if file.size and file.size > MAX_FILE_SIZE:
+        return False
+    
+    return True
+
+def save_uploaded_file(file: UploadFile, issue_id: UUID) -> tuple[str, str, int]:
+    """Save uploaded file and return (file_path, original_filename, file_size)"""
+    # Create directory structure: uploads/2025/08/issues/
+    date_path = datetime.now().strftime("%Y/%m")
+    upload_dir = pathlib.Path(UPLOAD_DIRECTORY) / date_path / "issues"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate unique filename
+    file_extension = pathlib.Path(file.filename).suffix
+    unique_filename = f"{uuid_lib.uuid4()}{file_extension}"
+    file_path = upload_dir / unique_filename
+    
+    # Save file and get size
+    with open(file_path, "wb") as buffer:
+        content = file.file.read()
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large")
+        buffer.write(content)
+        file_size = len(content)
+    
+    return str(file_path), file.filename, file_size
+
+@router.post("/with-files/", response_model=IssueCreateResponse, status_code=201)
+async def create_issue_with_files(
+    title: str = Form(...),
+    description: str = Form(...),
+    authority_id: UUID = Form(...),
+    location: str = Form(...),
+    category: str = Form(...),
+    priority: int = Form(1),
+    files: List[UploadFile] = File(default=[]),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new issue with optional file attachments"""
+    
+    # Verify authority exists
+    authority = db.query(Authority).filter(Authority.id == authority_id).first()
+    if not authority:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Authority not found"
+        )
+    
+    # Validate files
+    for file in files:
+        if file.filename:  # Only validate if file is actually uploaded
+            if not validate_file(file):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid file: {file.filename}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+                )
+    
+    # Create new issue
+    new_issue = Issue(
+        user_id=current_user.id,
+        authority_id=authority_id,
+        title=title,
+        description=description,
+        location=location,
+        category=category,
+        priority=priority,
+        status=0  # Default to open
+    )
+    
+    db.add(new_issue)
+    db.commit()
+    db.refresh(new_issue)
+    
+    # Handle file uploads
+    uploaded_files = []
+    for file in files:
+        if file.filename:  # Only process if file is actually uploaded
+            try:
+                # Save file to disk
+                file_path, original_filename, file_size = save_uploaded_file(file, new_issue.id)
+                
+                # Create Media record
+                media_record = Media(
+                    issue_id=new_issue.id,
+                    path=file_path,
+                    filename=original_filename,
+                    file_size=file_size,
+                    file_type=file.content_type
+                )
+                db.add(media_record)
+                uploaded_files.append(original_filename)
+                
+            except Exception as e:
+                # Clean up on error
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to upload file {file.filename}: {str(e)}"
+                )
+    
+    db.commit()
+    
+    # Load relationships for response
+    issue_with_relations = db.query(Issue).options(
+        joinedload(Issue.user),
+        joinedload(Issue.authority),
+        joinedload(Issue.votes),
+        joinedload(Issue.media)
+    ).filter(Issue.id == new_issue.id).first()
+    
+    return IssueCreateResponse(
+        message=f"Issue created successfully with {len(uploaded_files)} files",
         issue=create_issue_response(issue_with_relations)
     )
 
@@ -156,7 +305,8 @@ def get_all_issues(
     query = db.query(Issue).options(
         joinedload(Issue.user),
         joinedload(Issue.authority),
-        joinedload(Issue.votes)
+        joinedload(Issue.votes),
+        joinedload(Issue.media)
     )
     
     # Apply filters
@@ -219,7 +369,8 @@ def get_issue_by_id(
     issue = db.query(Issue).options(
         joinedload(Issue.user),
         joinedload(Issue.authority),
-        joinedload(Issue.votes)
+        joinedload(Issue.votes),
+        joinedload(Issue.media)
     ).filter(Issue.id == issue_id).first()
     
     if not issue:
@@ -242,7 +393,8 @@ def update_issue(
     issue = db.query(Issue).options(
         joinedload(Issue.user),
         joinedload(Issue.authority),
-        joinedload(Issue.votes)
+        joinedload(Issue.votes),
+        joinedload(Issue.media)
     ).filter(Issue.id == issue_id).first()
     
     if not issue:
@@ -298,3 +450,172 @@ def delete_issue(
     db.commit()
     
     return
+
+@router.post("/media/{issue_id}", status_code=201)
+async def add_media_to_issue(
+    issue_id: UUID,
+    files: List[UploadFile] = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Add media files to an existing issue"""
+    
+    # Verify issue exists and user has permission
+    issue = db.query(Issue).filter(Issue.id == issue_id).first()
+    if not issue:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Issue not found"
+        )
+    
+    # Check if user can add media (issue creator, authority, or admin)
+    if not check_issue_edit_permission(current_user, issue):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to add media to this issue"
+        )
+    
+    # Validate files
+    for file in files:
+        if not validate_file(file):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid file: {file.filename}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+            )
+    
+    # Save files and create Media records
+    uploaded_files = []
+    for file in files:
+        try:
+            # Save file to disk
+            file_path, original_filename, file_size = save_uploaded_file(file, issue_id)
+            
+            # Create Media record
+            media_record = Media(
+                issue_id=issue_id,
+                path=file_path,
+                filename=original_filename,
+                file_size=file_size,
+                file_type=file.content_type
+            )
+            db.add(media_record)
+            uploaded_files.append(original_filename)
+            
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to upload file {file.filename}: {str(e)}"
+            )
+    
+    db.commit()
+    
+    return {
+        "message": f"Added {len(uploaded_files)} media files to issue",
+        "uploaded_files": uploaded_files
+    }
+
+@router.get("/media/{issue_id}", response_model=List[MediaResponse])
+def get_issue_media(
+    issue_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all media files for an issue"""
+    
+    # Verify issue exists
+    issue = db.query(Issue).filter(Issue.id == issue_id).first()
+    if not issue:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Issue not found"
+        )
+    
+    # Get all media for this issue
+    media_files = db.query(Media).filter(Media.issue_id == issue_id).all()
+    
+    return [
+        MediaResponse(
+            id=media.id,
+            issue_id=media.issue_id,
+            path=media.path,
+            filename=media.filename,
+            file_size=media.file_size,
+            file_type=media.file_type,
+            created_at=media.created_at
+        ) for media in media_files
+    ]
+
+@router.delete("/media/{media_id}", status_code=204)
+def delete_media(
+    media_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a specific media file"""
+    
+    # Find media record
+    media = db.query(Media).filter(Media.id == media_id).first()
+    if not media:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Media not found"
+        )
+    
+    # Get the issue to check permissions
+    issue = db.query(Issue).filter(Issue.id == media.issue_id).first()
+    if not issue:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Associated issue not found"
+        )
+    
+    # Check permissions (same as editing issue)
+    if not check_issue_edit_permission(current_user, issue):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this media"
+        )
+    
+    # Delete file from disk
+    try:
+        if os.path.exists(media.path):
+            os.remove(media.path)
+    except Exception as e:
+        # Log error but continue with database deletion
+        print(f"Warning: Could not delete file {media.path}: {e}")
+    
+    # Delete from database
+    db.delete(media)
+    db.commit()
+    
+    return
+
+@router.get("/serve/{media_id}")
+async def get_media_file(
+    media_id: UUID,
+    db: Session = Depends(get_db)
+):
+    """Serve uploaded media file"""
+    
+    # Find media record
+    media = db.query(Media).filter(Media.id == media_id).first()
+    if not media:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Media file not found"
+        )
+    
+    # Check if file exists on disk
+    if not os.path.exists(media.path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found on disk"
+        )
+    
+    # Return file
+    return FileResponse(
+        path=media.path,
+        filename=pathlib.Path(media.path).name,
+        media_type='application/octet-stream'
+    )

@@ -48,7 +48,7 @@ backend/
 ├── tests/                       # Comprehensive test suite
 │   ├── test_auth_endpoints.py   # Authentication endpoint tests (8 tests)
 │   ├── test_user_endpoints.py   # User management endpoint tests (4 tests)
-│   ├── test_issue_endpoints.py  # Issues management endpoint tests (5 tests)
+│   ├── test_issue_endpoints.py  # Issues & media management endpoint tests (12 tests)
 │   ├── test_authority_endpoints.py # Authorities management endpoint tests (3 tests)
 │   ├── run_all_tests.py         # Test runner script
 │   ├── performance_test.py      # Load testing
@@ -56,6 +56,8 @@ backend/
 │   ├── quick_test.py            # Quick validation tests
 │   ├── conftest.py              # Test configuration
 │   └── README.md                # Test documentation
+├── uploads/                     # Media file storage (organized by date)
+│   └── YYYY/MM/issues/          # Issue attachments by year/month
 ├── venv/                        # Virtual environment (created by user)
 ├── .env                         # Environment variables (create this)
 ├── .gitignore                   # Git ignore rules
@@ -107,7 +109,7 @@ python tests/test_issue_endpoints.py  # 5/5 issues management tests
 python tests/test_authority_endpoints.py # 3/3 authorities management tests
 ```
 
-**Current Test Status: ✅ 20/20 tests passing (100%)**
+**Current Test Status: ✅ 27/27 tests passing (100%)**
 
 ---
 
@@ -824,6 +826,174 @@ Authorization: Bearer <access_token>
 
 **Response (204 No Content)**
 
+#### **6. Add Media to Issue**
+```http
+POST /api/issues/media/{issue_id}
+```
+
+**Description:** Upload one or more files to an existing issue. Supports images (jpg, jpeg, png, gif), videos (mp4, mov), and documents (pdf). Maximum file size: 10MB per file.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+```
+
+**Permissions:** Issue creator, assigned authority, or admin.
+
+**Request Body (Form Data):**
+```
+files: File[] (one or more files)
+```
+
+**Supported File Types:**
+- Images: `.jpg`, `.jpeg`, `.png`, `.gif`
+- Videos: `.mp4`, `.mov`
+- Documents: `.pdf`
+
+**Response (201 Created):**
+```json
+{
+  "message": "Added 2 media files to issue",
+  "uploaded_files": ["pothole_photo.jpg", "damage_report.pdf"]
+}
+```
+
+#### **7. Get Issue Media**
+```http
+GET /api/issues/media/{issue_id}
+```
+
+**Description:** Get list of all media files attached to a specific issue.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "issue_id": "issue-uuid",
+    "path": "uploads/2025/08/issues/filename.jpg",
+    "filename": "pothole_photo.jpg",
+    "file_size": 2048576,
+    "file_type": "image/jpeg",
+    "created_at": "2025-08-27T12:30:45.123456"
+  },
+  {
+    "id": "another-uuid",
+    "issue_id": "issue-uuid", 
+    "path": "uploads/2025/08/issues/filename.pdf",
+    "filename": "damage_report.pdf",
+    "file_size": 1024000,
+    "file_type": "application/pdf",
+    "created_at": "2025-08-27T12:35:22.789012"
+  }
+]
+```
+
+#### **8. Delete Media File**
+```http
+DELETE /api/issues/media/{media_id}
+```
+
+**Description:** Delete a specific media file from an issue. File is removed from both database and disk storage.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Permissions:** Issue creator, assigned authority, or admin.
+
+**Response (204 No Content)**
+
+#### **9. Download/Serve Media File**
+```http
+GET /api/issues/serve/{media_id}
+```
+
+**Description:** Download or view a media file. Returns the actual file content with appropriate headers.
+
+**Response (200 OK):**
+- Content-Type: `application/octet-stream`
+- Content-Disposition: `attachment; filename="original_filename.ext"`
+- File content as binary data
+
+**Usage Example:**
+```html
+<!-- Direct link to view/download file -->
+<a href="/api/issues/serve/550e8400-e29b-41d4-a716-446655440000" 
+   download="pothole_photo.jpg">Download Image</a>
+
+<!-- Image display -->
+<img src="/api/issues/serve/550e8400-e29b-41d4-a716-446655440000" 
+     alt="Issue Photo" />
+```
+
+#### **🌐 Frontend Integration Example - Media Upload**
+
+```javascript
+// Upload multiple files to an issue
+async function uploadMediaToIssue(issueId, files, accessToken) {
+  const formData = new FormData();
+  
+  // Add multiple files to form data
+  for (let i = 0; i < files.length; i++) {
+    formData.append('files', files[i]);
+  }
+  
+  const response = await fetch(`/api/issues/media/${issueId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: formData
+  });
+  
+  const result = await response.json();
+  console.log(result.message); // "Added 2 media files to issue"
+  return result.uploaded_files; // ["photo.jpg", "document.pdf"]
+}
+
+// Get all media for an issue
+async function getIssueMedia(issueId, accessToken) {
+  const response = await fetch(`/api/issues/media/${issueId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  });
+  
+  const mediaFiles = await response.json();
+  return mediaFiles; // Array of media objects with download URLs
+}
+
+// Create downloadable links for media files
+function createMediaLinks(mediaFiles) {
+  return mediaFiles.map(media => ({
+    id: media.id,
+    filename: media.filename,
+    downloadUrl: `/api/issues/serve/${media.id}`,
+    size: media.file_size,
+    type: media.file_type
+  }));
+}
+
+// HTML file input for multiple files
+// <input type="file" id="mediaFiles" multiple 
+//        accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.pdf">
+```
+
+#### **📁 Media Storage Details**
+- **Storage Path**: `uploads/YYYY/MM/issues/`
+- **File Naming**: UUID-based filenames to prevent conflicts
+- **Metadata**: Original filename, size, and type stored in database
+- **Security**: Access controlled by issue permissions
+- **Organization**: Files organized by upload date for better management
+
 #### **📊 Issue Status Codes**
 - `0`: Open (newly created)
 - `1`: In Progress (being worked on)
@@ -940,7 +1110,7 @@ The project includes a comprehensive test suite covering all API endpoints:
 
 - **📁 Location**: `backend/tests/`
 - **🧪 Test Files**: 4 main test scripts
-- **📊 Coverage**: 20/20 tests passing (100%)
+- **📊 Coverage**: 27/27 tests passing (100%)
 - **🚀 Easy Running**: One-command test execution
 
 ### **Test Scripts**
@@ -956,9 +1126,9 @@ The project includes a comprehensive test suite covering all API endpoints:
 - 🎯 **Focus**: Role-based access, profile updates, admin permissions
 
 #### **3. Issues Management Tests (`test_issue_endpoints.py`)**
-- ✅ **5 Tests**: Complete issues CRUD operations
-- 📋 **Endpoints**: create, read, update, delete, list with filtering
-- 🎯 **Focus**: Issue reporting, status management, role-based permissions
+- ✅ **12 Tests**: Complete issues and media CRUD operations
+- 📋 **Endpoints**: create, read, update, delete, list with filtering, media upload/download/delete
+- 🎯 **Focus**: Issue reporting, status management, media attachments, role-based permissions
 
 #### **4. Authorities Management Tests (`test_authority_endpoints.py`)**
 - ✅ **3 Tests**: Authority management operations
@@ -1017,7 +1187,7 @@ python tests/test_authority_endpoints.py
 - **`app/models.py`**: SQLAlchemy database models (7 tables with UUID primary keys)
 - **`app/routers/auth.py`**: 6 authentication endpoints with JWT
 - **`app/routers/users.py`**: 7 user management endpoints with role-based access
-- **`app/routers/issues.py`**: 5 issues management endpoints with CRUD operations
+- **`app/routers/issues.py`**: 9 issues and media management endpoints with CRUD operations and file upload
 - **`app/routers/authorities.py`**: 2 authorities management endpoints with access control
 - **`app/schemas/auth_schemas.py`**: Authentication request/response models
 - **`app/schemas/user_schemas.py`**: User management request/response models
@@ -1095,10 +1265,10 @@ pip install -r requirements.txt
 
 ✅ **Authentication System**: Complete with 6 endpoints, JWT tokens, Google OAuth  
 ✅ **User Management**: Full CRUD with role-based access control  
-✅ **Issues Management**: Complete CRUD system with 5 endpoints, filtering, and pagination  
+✅ **Issues Management**: Complete CRUD system with 9 endpoints, filtering, pagination, and media upload  
 ✅ **Authorities Management**: Authority info management with 2 endpoints and access control  
 ✅ **Database**: PostgreSQL with UUID primary keys and proper relationships  
-✅ **Testing**: 20/20 tests passing with comprehensive coverage  
+✅ **Testing**: 27/27 tests passing with comprehensive coverage  
 ✅ **Documentation**: Complete API reference with examples  
 ✅ **Migrations**: Production-ready database schema management  
 

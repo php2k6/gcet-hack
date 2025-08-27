@@ -17,6 +17,8 @@ class IssuesTester:
         self.test_user_id = None
         self.test_authority_id = None
         self.test_issue_id = None
+        self.test_media_id = None
+        self.test_media_files = []
         
     def print_result(self, test_name, success, details=""):
         status = "✅ PASS" if success else "❌ FAIL"
@@ -220,7 +222,26 @@ class IssuesTester:
             return False
         
         try:
-            response = self.session.delete(f"{BASE_URL}/issues/{self.test_issue_id}")
+            # First, clean up any remaining media files
+            try:
+                headers = {"Authorization": f"Bearer {self.auth_token}"}
+                media_response = self.session.get(
+                    f"{BASE_URL}/issues/media/{self.test_issue_id}",
+                    headers=headers
+                )
+                if media_response.status_code == 200:
+                    media_list = media_response.json()
+                    for media in media_list:
+                        self.session.delete(
+                            f"{BASE_URL}/issues/media/{media['id']}",
+                            headers=headers
+                        )
+            except:
+                pass  # Ignore cleanup errors
+                
+            # Now delete the issue with proper authorization
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            response = self.session.delete(f"{BASE_URL}/issues/{self.test_issue_id}", headers=headers)
             
             if response.status_code == 204:
                 self.print_result("DELETE /issues/{issue_id}", True, "Issue deleted successfully")
@@ -231,6 +252,233 @@ class IssuesTester:
                 
         except Exception as e:
             self.print_result("DELETE /issues/{issue_id}", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_upload_media_to_issue(self):
+        """Test uploading media files to an issue"""
+        try:
+            # Create a test file in memory
+            test_file_content = b"This is a test image file content"
+            
+            # Prepare files for upload
+            files = {
+                'files': ('test_image.jpg', test_file_content, 'image/jpeg'),
+            }
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            response = self.session.post(
+                f"{BASE_URL}/issues/media/{self.test_issue_id}",
+                files=files,
+                headers=headers
+            )
+            
+            if response.status_code == 201:
+                data = response.json()
+                if "message" in data and "uploaded_files" in data:
+                    # Store media info for later tests
+                    self.test_media_files = data.get("uploaded_files", [])
+                    self.print_result("POST /issues/media/{issue_id}", True, f"Uploaded {len(self.test_media_files)} files")
+                    return True
+                else:
+                    self.print_result("POST /issues/media/{issue_id}", False, "Invalid response format")
+                    return False
+            else:
+                self.print_result("POST /issues/media/{issue_id}", False, f"Status: {response.status_code}, Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.print_result("POST /issues/media/{issue_id}", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_get_issue_media(self):
+        """Test getting all media files for an issue"""
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            response = self.session.get(
+                f"{BASE_URL}/issues/media/{self.test_issue_id}",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                media_list = response.json()
+                if isinstance(media_list, list):
+                    # Store first media ID for deletion test
+                    if media_list:
+                        self.test_media_id = media_list[0]["id"]
+                        self.print_result("GET /issues/media/{issue_id}", True, f"Retrieved {len(media_list)} media files")
+                        
+                        # Validate media structure
+                        media = media_list[0]
+                        required_fields = ["id", "issue_id", "path", "filename", "file_size", "file_type", "created_at"]
+                        if all(field in media for field in required_fields):
+                            self.print_result("Media Response Structure", True, "All required fields present")
+                        else:
+                            self.print_result("Media Response Structure", False, "Missing required fields")
+                            
+                        return True
+                    else:
+                        self.print_result("GET /issues/media/{issue_id}", False, "No media files found")
+                        return False
+                else:
+                    self.print_result("GET /issues/media/{issue_id}", False, "Response is not a list")
+                    return False
+            else:
+                self.print_result("GET /issues/media/{issue_id}", False, f"Status: {response.status_code}, Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.print_result("GET /issues/media/{issue_id}", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_serve_media_file(self):
+        """Test serving/downloading a media file"""
+        try:
+            if not hasattr(self, 'test_media_id'):
+                self.print_result("GET /issues/serve/{media_id}", False, "No media ID available for testing")
+                return False
+            
+            response = self.session.get(f"{BASE_URL}/issues/serve/{self.test_media_id}")
+            
+            if response.status_code == 200:
+                # Check if response has file content
+                if len(response.content) > 0:
+                    self.print_result("GET /issues/serve/{media_id}", True, f"File served successfully ({len(response.content)} bytes)")
+                    return True
+                else:
+                    self.print_result("GET /issues/serve/{media_id}", False, "Empty file content")
+                    return False
+            else:
+                self.print_result("GET /issues/serve/{media_id}", False, f"Status: {response.status_code}, Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.print_result("GET /issues/serve/{media_id}", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_upload_multiple_media_files(self):
+        """Test uploading multiple media files at once"""
+        try:
+            # Create multiple test files
+            files = [
+                ('files', ('test_image1.jpg', b"Test image 1 content", 'image/jpeg')),
+                ('files', ('test_image2.png', b"Test image 2 content", 'image/png')),
+                ('files', ('test_document.pdf', b"Test PDF content", 'application/pdf')),
+            ]
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            response = self.session.post(
+                f"{BASE_URL}/issues/media/{self.test_issue_id}",
+                files=files,
+                headers=headers
+            )
+            
+            if response.status_code == 201:
+                data = response.json()
+                uploaded_files = data.get("uploaded_files", [])
+                if len(uploaded_files) == 3:
+                    self.print_result("Upload Multiple Media Files", True, f"Successfully uploaded {len(uploaded_files)} files")
+                    return True
+                else:
+                    self.print_result("Upload Multiple Media Files", False, f"Expected 3 files, got {len(uploaded_files)}")
+                    return False
+            else:
+                self.print_result("Upload Multiple Media Files", False, f"Status: {response.status_code}, Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.print_result("Upload Multiple Media Files", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_upload_invalid_media_file(self):
+        """Test uploading invalid file type"""
+        try:
+            # Try to upload a .txt file (not allowed)
+            files = {
+                'files': ('test_file.txt', b"This is a text file", 'text/plain'),
+            }
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            response = self.session.post(
+                f"{BASE_URL}/issues/media/{self.test_issue_id}",
+                files=files,
+                headers=headers
+            )
+            
+            if response.status_code == 400:
+                self.print_result("Upload Invalid Media File", True, "Invalid file type correctly rejected")
+                return True
+            else:
+                self.print_result("Upload Invalid Media File", False, f"Expected 400, got {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.print_result("Upload Invalid Media File", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_delete_media_file(self):
+        """Test deleting a specific media file"""
+        try:
+            if not hasattr(self, 'test_media_id'):
+                self.print_result("DELETE /issues/media/{media_id}", False, "No media ID available for testing")
+                return False
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            response = self.session.delete(
+                f"{BASE_URL}/issues/media/{self.test_media_id}",
+                headers=headers
+            )
+            
+            if response.status_code == 204:
+                self.print_result("DELETE /issues/media/{media_id}", True, "Media file deleted successfully")
+                return True
+            else:
+                self.print_result("DELETE /issues/media/{media_id}", False, f"Status: {response.status_code}, Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.print_result("DELETE /issues/media/{media_id}", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_media_authorization(self):
+        """Test media operations require proper authorization"""
+        try:
+            # Create a separate session without auth headers
+            unauth_session = requests.Session()
+            
+            # Test without auth token
+            test_file_content = b"Test content"
+            files = {
+                'files': ('test.jpg', test_file_content, 'image/jpeg'),
+            }
+            
+            response = unauth_session.post(
+                f"{BASE_URL}/issues/media/{self.test_issue_id}",
+                files=files
+                # No authorization header
+            )
+            
+            if response.status_code == 401:
+                self.print_result("Media Authorization Check", True, "Unauthorized access correctly blocked (401)")
+                return True
+            elif response.status_code == 422:
+                # FastAPI returns 422 for missing dependencies sometimes
+                self.print_result("Media Authorization Check", True, "Unauthorized access correctly blocked (422)")
+                return True
+            elif response.status_code == 403:
+                # FastAPI returns 403 for forbidden access
+                self.print_result("Media Authorization Check", True, "Unauthorized access correctly blocked (403)")
+                return True
+            else:
+                self.print_result("Media Authorization Check", False, f"Expected 401/422/403, got {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.print_result("Media Authorization Check", False, f"Exception: {str(e)}")
             return False
     
     def run_all_tests(self):
@@ -247,6 +495,13 @@ class IssuesTester:
             self.test_get_all_issues,
             self.test_get_issue_by_id,
             self.test_update_issue,
+            self.test_upload_media_to_issue,
+            self.test_get_issue_media,
+            self.test_serve_media_file,
+            self.test_upload_multiple_media_files,
+            self.test_upload_invalid_media_file,
+            self.test_media_authorization,
+            self.test_delete_media_file,
             self.test_delete_issue
         ]
         
@@ -258,11 +513,11 @@ class IssuesTester:
                 passed += 1
         
         print("=" * 60)
-        print("🏁 Issues API Testing Complete!")
+        print("🏁 Issues & Media API Testing Complete!")
         print(f"📊 Results: {passed}/{total} tests passed")
         
         if passed == total:
-            print("🎉 All tests passed! Issues API is working correctly!")
+            print("🎉 All tests passed! Issues & Media APIs are working correctly!")
         else:
             print("⚠️ Some tests failed. Please check the implementation.")
 

@@ -11,6 +11,19 @@ class VoteResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# Media schemas
+class MediaResponse(BaseModel):
+    id: UUID4
+    issue_id: UUID4
+    path: str
+    filename: Optional[str] = Field(None, description="Original filename")
+    file_size: Optional[int] = Field(None, description="File size in bytes")
+    file_type: Optional[str] = Field(None, description="MIME type")
+    created_at: Optional[datetime] = Field(None, description="Upload timestamp")
+    
+    class Config:
+        from_attributes = True
+
 # Issue request schemas
 class IssueCreateRequest(BaseModel):
     authority_id: UUID4 = Field(..., description="Authority responsible for this issue")
@@ -68,6 +81,7 @@ class IssueResponse(BaseModel):
     user: IssueUserResponse
     authority: IssueAuthorityResponse
     votes: List[VoteResponse] = []
+    media: List[MediaResponse] = []
     vote_count: int = Field(..., description="Total number of votes")
     
     class Config:
