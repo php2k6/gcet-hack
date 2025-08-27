@@ -30,11 +30,15 @@ backend/
 │   │   ├── __init__.py          # Router package initialization
 │   │   ├── auth.py              # Authentication endpoints (6 endpoints)
 │   │   ├── users.py             # User management endpoints (7 endpoints)
+│   │   ├── issues.py            # Issues management endpoints (5 endpoints)
+│   │   ├── authorities.py       # Authorities management endpoints (2 endpoints)
 │   │   └── chatbot.py           # Chatbot endpoints
 │   ├── schemas/                 # Pydantic models for validation
 │   │   ├── __init__.py          # Schema package initialization
 │   │   ├── auth_schemas.py      # Authentication request/response models
-│   │   └── user_schemas.py      # User management request/response models
+│   │   ├── user_schemas.py      # User management request/response models
+│   │   ├── issue_schemas.py     # Issues management request/response models
+│   │   └── authority_schemas.py # Authorities management request/response models
 │   └── services/                # Business logic services
 ├── migrations/                   # Alembic database migrations
 │   ├── env.py                   # Alembic environment configuration
@@ -44,6 +48,8 @@ backend/
 ├── tests/                       # Comprehensive test suite
 │   ├── test_auth_endpoints.py   # Authentication endpoint tests (8 tests)
 │   ├── test_user_endpoints.py   # User management endpoint tests (4 tests)
+│   ├── test_issue_endpoints.py  # Issues management endpoint tests (5 tests)
+│   ├── test_authority_endpoints.py # Authorities management endpoint tests (3 tests)
 │   ├── run_all_tests.py         # Test runner script
 │   ├── performance_test.py      # Load testing
 │   ├── manual_test.py           # Manual testing scripts
@@ -97,9 +103,11 @@ python tests/run_all_tests.py
 # Or run individual test suites
 python tests/test_auth_endpoints.py    # 8/8 authentication tests
 python tests/test_user_endpoints.py   # 4/4 user management tests
+python tests/test_issue_endpoints.py  # 5/5 issues management tests
+python tests/test_authority_endpoints.py # 3/3 authorities management tests
 ```
 
-**Current Test Status: ✅ 12/12 tests passing (100%)**
+**Current Test Status: ✅ 20/20 tests passing (100%)**
 
 ---
 
@@ -654,6 +662,253 @@ Authorization: Bearer <access_token>
 }
 ```
 
+### 📋 Issues Management API
+
+All issues endpoints are prefixed with `/api/issues`. Citizens can report problems, while authorities and admins can manage them.
+
+#### **1. Create Issue**
+```http
+POST /api/issues/
+```
+
+**Description:** Create a new issue/complaint. Any authenticated user can create issues.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+```json
+{
+  "authority_id": "550e8400-e29b-41d4-a716-446655440000",
+  "title": "Pothole on Main Street",
+  "description": "Large pothole causing damage to vehicles",
+  "location": "Main Street near City Hall",
+  "category": "Road Infrastructure",
+  "priority": 2
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Issue created successfully",
+  "issue": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "user-uuid",
+    "authority_id": "authority-uuid",
+    "title": "Pothole on Main Street",
+    "description": "Large pothole causing damage to vehicles",
+    "status": 0,
+    "location": "Main Street near City Hall",
+    "created_at": "2025-08-27T12:30:45.123456",
+    "updated_at": "2025-08-27T12:30:45.123456",
+    "priority": 2,
+    "category": "Road Infrastructure",
+    "user": {
+      "id": "user-uuid",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "district": "Downtown"
+    },
+    "authority": {
+      "id": "authority-uuid",
+      "name": "Public Works Department",
+      "district": "Downtown",
+      "contact_email": "works@city.gov",
+      "contact_phone": "555-0123",
+      "category": "Infrastructure"
+    },
+    "votes": [],
+    "vote_count": 0
+  }
+}
+```
+
+#### **2. Get All Issues**
+```http
+GET /api/issues/
+```
+
+**Description:** Get paginated list of all issues with comprehensive filtering options.
+
+**Query Parameters:**
+- `district`: Filter by authority district
+- `category`: Filter by issue category
+- `status` (0-3): Filter by status (0=Open, 1=In Progress, 2=Resolved, 3=Closed)
+- `search`: Search in title and description
+- `created_after`: Issues created after date (ISO format)
+- `created_before`: Issues created before date (ISO format)
+- `limit` (1-100): Results per page (default: 10)
+- `page`: Page number (default: 1)
+- `sort_by`: Sort field (default: created_at)
+- `sort_order`: asc/desc (default: desc)
+
+**Example Request:**
+```http
+GET /api/issues/?district=Downtown&status=0&limit=20&page=1
+```
+
+**Response (200 OK):**
+```json
+{
+  "issues": [
+    {
+      "id": "issue-uuid",
+      "title": "Pothole on Main Street",
+      "description": "Large pothole causing damage",
+      "status": 0,
+      "location": "Main Street",
+      "priority": 2,
+      "category": "Road Infrastructure",
+      "created_at": "2025-08-27T12:30:45.123456",
+      "user": {"name": "John Doe", "district": "Downtown"},
+      "authority": {"name": "Public Works", "district": "Downtown"},
+      "vote_count": 5
+    }
+  ],
+  "total": 45,
+  "page": 1,
+  "limit": 20,
+  "total_pages": 3
+}
+```
+
+#### **3. Get Issue by ID**
+```http
+GET /api/issues/{issue_id}
+```
+
+**Description:** Get detailed information about a specific issue by UUID.
+
+**Response (200 OK):** Complete issue object with user, authority, and votes
+
+#### **4. Update Issue**
+```http
+PATCH /api/issues/{issue_id}
+```
+
+**Description:** Update issue details. Permissions: Admin (any issue), Authority (issues in their department), Issue creator (own issues).
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body (all fields optional):**
+```json
+{
+  "title": "Updated title",
+  "description": "Updated description",
+  "status": 1,
+  "location": "Updated location",
+  "category": "Updated category",
+  "priority": 3
+}
+```
+
+**Response (200 OK):** Updated issue object
+
+#### **5. Delete Issue**
+```http
+DELETE /api/issues/{issue_id}
+```
+
+**Description:** Delete an issue. Permissions: Admin or issue creator only.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response (204 No Content)**
+
+#### **📊 Issue Status Codes**
+- `0`: Open (newly created)
+- `1`: In Progress (being worked on)
+- `2`: Resolved (work completed)
+- `3`: Closed (final state)
+
+#### **🎯 Priority Levels**
+- `1`: Low priority
+- `2`: Medium priority  
+- `3`: High priority
+- `4`: Critical/Urgent
+
+### 🏛️ Authorities Management API
+
+All authorities endpoints are prefixed with `/api/authorities`. Manage government departments and agencies.
+
+#### **1. Get Authority by ID**
+```http
+GET /api/authorities/{authority_id}
+```
+
+**Description:** Get detailed information about a specific authority by UUID.
+
+**Response (200 OK):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "user-uuid",
+  "name": "Public Works Department",
+  "district": "Downtown",
+  "contact_email": "works@city.gov",
+  "contact_phone": "555-0123",
+  "address": "123 City Hall Plaza",
+  "category": "Infrastructure",
+  "description": "Responsible for road maintenance and public infrastructure",
+  "created_at": "2025-08-27T12:30:45.123456",
+  "updated_at": "2025-08-27T12:30:45.123456",
+  "user": {
+    "id": "user-uuid",
+    "name": "Department Head",
+    "email": "head@works.gov",
+    "phone": "555-0124",
+    "district": "Downtown",
+    "role": 1
+  }
+}
+```
+
+#### **2. Update Authority**
+```http
+PATCH /api/authorities/{authority_id}
+```
+
+**Description:** Update authority information. Permissions: Admin or the authority user themselves.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body (all fields optional):**
+```json
+{
+  "name": "Updated Department Name",
+  "contact_email": "new@email.gov",
+  "contact_phone": "555-9999",
+  "address": "New Address",
+  "category": "Updated Category",
+  "description": "Updated description of services"
+}
+```
+
+**Response (200 OK):** Updated authority object
+
+#### **🏛️ Authority Categories**
+Common authority categories include:
+- Infrastructure
+- Public Safety
+- Health Services
+- Environmental
+- Transportation
+- Utilities
+- Education
+- Parks & Recreation
+
 ### 🤖 Other Available Endpoints
 
 #### **Chatbot API**
@@ -684,8 +939,8 @@ GET /health
 The project includes a comprehensive test suite covering all API endpoints:
 
 - **📁 Location**: `backend/tests/`
-- **🧪 Test Files**: 3 main test scripts
-- **📊 Coverage**: 12/12 tests passing (100%)
+- **🧪 Test Files**: 4 main test scripts
+- **📊 Coverage**: 20/20 tests passing (100%)
 - **🚀 Easy Running**: One-command test execution
 
 ### **Test Scripts**
@@ -700,7 +955,17 @@ The project includes a comprehensive test suite covering all API endpoints:
 - 👤 **Endpoints**: profile management, user lookup, admin controls
 - 🎯 **Focus**: Role-based access, profile updates, admin permissions
 
-#### **3. Test Runner (`run_all_tests.py`)**
+#### **3. Issues Management Tests (`test_issue_endpoints.py`)**
+- ✅ **5 Tests**: Complete issues CRUD operations
+- 📋 **Endpoints**: create, read, update, delete, list with filtering
+- 🎯 **Focus**: Issue reporting, status management, role-based permissions
+
+#### **4. Authorities Management Tests (`test_authority_endpoints.py`)**
+- ✅ **3 Tests**: Authority management operations
+- 🏛️ **Endpoints**: get by ID, update authority info, access control
+- 🎯 **Focus**: Authority data management, permission validation
+
+#### **5. Test Runner (`run_all_tests.py`)**
 - 🎬 **Runs**: All test suites in sequence
 - 📊 **Reports**: Comprehensive test results
 - ⚡ **One Command**: Complete test execution
@@ -722,6 +987,8 @@ python tests/run_all_tests.py
 # Run specific test suites
 python tests/test_auth_endpoints.py
 python tests/test_user_endpoints.py
+python tests/test_issue_endpoints.py
+python tests/test_authority_endpoints.py
 ```
 
 ### **Test Features**
@@ -750,8 +1017,12 @@ python tests/test_user_endpoints.py
 - **`app/models.py`**: SQLAlchemy database models (7 tables with UUID primary keys)
 - **`app/routers/auth.py`**: 6 authentication endpoints with JWT
 - **`app/routers/users.py`**: 7 user management endpoints with role-based access
+- **`app/routers/issues.py`**: 5 issues management endpoints with CRUD operations
+- **`app/routers/authorities.py`**: 2 authorities management endpoints with access control
 - **`app/schemas/auth_schemas.py`**: Authentication request/response models
 - **`app/schemas/user_schemas.py`**: User management request/response models
+- **`app/schemas/issue_schemas.py`**: Issues management request/response models
+- **`app/schemas/authority_schemas.py`**: Authorities management request/response models
 - **`tests/`**: Comprehensive test suite with 100% pass rate
 
 ### **Best Practices**
@@ -824,8 +1095,10 @@ pip install -r requirements.txt
 
 ✅ **Authentication System**: Complete with 6 endpoints, JWT tokens, Google OAuth  
 ✅ **User Management**: Full CRUD with role-based access control  
+✅ **Issues Management**: Complete CRUD system with 5 endpoints, filtering, and pagination  
+✅ **Authorities Management**: Authority info management with 2 endpoints and access control  
 ✅ **Database**: PostgreSQL with UUID primary keys and proper relationships  
-✅ **Testing**: 12/12 tests passing with comprehensive coverage  
+✅ **Testing**: 20/20 tests passing with comprehensive coverage  
 ✅ **Documentation**: Complete API reference with examples  
 ✅ **Migrations**: Production-ready database schema management  
 
