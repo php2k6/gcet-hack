@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from app.database import engine
 from app.models import Base
-from app.routers import chatbot, auth
+from app.routers import chatbot, auth, users
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import all models to ensure they're registered
@@ -42,6 +42,7 @@ app.add_middleware(
 # Include routers
 app.include_router(chatbot.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
 
 @app.get("/")
 def root():

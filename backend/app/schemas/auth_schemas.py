@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     district: str
     role: int
     is_google: bool
+    google_id: Optional[str] = None
     created_at: str
 
     class Config:

@@ -38,10 +38,11 @@ def create_user_response(user: User) -> UserResponse:
         district=user.district or "",  # Handle None values
         role=user.role,
         is_google=user.is_google,
+        google_id=user.google_id,
         created_at=user.created_at.isoformat()
     )
 
-@router.post("/signup", response_model=LoginResponse, status_code=201)
+@router.post("/signup", response_model=SignupResponse, status_code=201)
 def signup(
     user_data: SignupRequest,
     db: Session = Depends(get_db)
@@ -78,15 +79,8 @@ def signup(
     # Convert to UserResponse schema
     user_response = create_user_response(new_user)
     
-    # Generate JWT tokens for immediate login after signup
-    token_data = {"sub": new_user.email, "role": new_user.role}
-    access_token = auth_handler.create_access_token(data=token_data)
-    refresh_token = auth_handler.create_refresh_token(data={"sub": new_user.email})
-    
-    return LoginResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
+    return SignupResponse(
+        message="User created successfully",
         user=user_response
     )
 

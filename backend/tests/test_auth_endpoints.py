@@ -14,6 +14,8 @@ class AuthTester:
         self.session = requests.Session()
         self.access_token: Optional[str] = None
         self.refresh_token: Optional[str] = None
+        self.test_email: Optional[str] = None
+        self.test_password: Optional[str] = None
         
     def print_result(self, test_name: str, success: bool, details: str = ""):
         """Print test result with formatting"""
@@ -45,52 +47,65 @@ class AuthTester:
             
             if response.status_code == 201:
                 data = response.json()
-                required_fields = ["access_token", "refresh_token", "token_type", "user"]
+                required_fields = ["message", "user"]
                 
                 if all(field in data for field in required_fields):
-                    self.access_token = data["access_token"]
-                    self.refresh_token = data["refresh_token"]
-                    self.print_result("Signup", True, f"User created: {data['user']['email']}")
-                    return True
+                    user = data["user"]
+                    if (user["email"] == test_data["email"] and 
+                        user["name"] == test_data["name"] and
+                        data["message"] == "User created successfully"):
+                        self.print_result("POST /auth/signup", True, f"User created: {user['email']}")
+                        # Store email and password for login test
+                        self.test_email = test_data["email"]
+                        self.test_password = test_data["password"]
+                        return True
+                    else:
+                        self.print_result("POST /auth/signup", False, "User data mismatch")
+                        return False
                 else:
-                    self.print_result("Signup", False, f"Missing fields in response: {data}")
+                    self.print_result("POST /auth/signup", False, "Missing required fields in response")
                     return False
             else:
-                self.print_result("Signup", False, f"Status: {response.status_code}, Response: {response.text}")
+                self.print_result("POST /auth/signup", False, f"Status: {response.status_code}, Response: {response.text}")
                 return False
                 
         except Exception as e:
-            self.print_result("Signup", False, f"Exception: {str(e)}")
+            self.print_result("POST /auth/signup", False, f"Error: {str(e)}")
             return False
     
     def test_login(self) -> bool:
         """Test user login endpoint"""
         print("🧪 Testing /auth/login...")
         
-        # First create a user to login with
-        timestamp = str(int(time.time()))
-        signup_data = {
-            "name": "Login Test User",
-            "email": f"logintest_{timestamp}@example.com",
-            "password": "loginpassword123",
-            "phone": "1234567890",
-            "district": "Login District"
-        }
-        
-        # Create user
-        signup_response = self.session.post(
-            f"{self.api_base}/auth/signup",
-            json=signup_data
-        )
-        
-        if signup_response.status_code != 201:
-            self.print_result("Login", False, "Failed to create user for login test")
-            return False
+        # Use credentials from signup test or create new ones
+        if not self.test_email or not self.test_password:
+            timestamp = str(int(time.time()))
+            signup_data = {
+                "name": "Login Test User",
+                "email": f"logintest_{timestamp}@example.com",
+                "password": "loginpassword123",
+                "phone": "1234567890",
+                "district": "Login District"
+            }
+            
+            # Create user
+            signup_response = self.session.post(
+                f"{self.api_base}/auth/signup",
+                json=signup_data
+            )
+            
+            if signup_response.status_code != 201:
+                self.print_result("POST /auth/login", False, "Failed to create user for login test")
+                return False
+            
+            self.test_email = signup_data["email"]
+            self.test_password = signup_data["password"]
         
         # Now test login
         login_data = {
-            "email": signup_data["email"],
-            "password": signup_data["password"]
+            "email": self.test_email,
+            "password": self.test_password,
+            "role": 0
         }
         
         try:
@@ -106,17 +121,19 @@ class AuthTester:
                 if all(field in data for field in required_fields):
                     self.access_token = data["access_token"]
                     self.refresh_token = data["refresh_token"]
-                    self.print_result("Login", True, f"Login successful: {data['user']['email']}")
+                    # Update session headers for subsequent requests
+                    self.session.headers.update({"Authorization": f"Bearer {self.access_token}"})
+                    self.print_result("POST /auth/login", True, f"Login successful: {data['user']['email']}")
                     return True
                 else:
-                    self.print_result("Login", False, f"Missing fields in response: {data}")
+                    self.print_result("POST /auth/login", False, f"Missing fields in response: {data}")
                     return False
             else:
-                self.print_result("Login", False, f"Status: {response.status_code}, Response: {response.text}")
+                self.print_result("POST /auth/login", False, f"Status: {response.status_code}, Response: {response.text}")
                 return False
                 
         except Exception as e:
-            self.print_result("Login", False, f"Exception: {str(e)}")
+            self.print_result("POST /auth/login", False, f"Exception: {str(e)}")
             return False
     
     def test_me(self) -> bool:
@@ -124,32 +141,28 @@ class AuthTester:
         print("🧪 Testing /auth/me...")
         
         if not self.access_token:
-            self.print_result("Me", False, "No access token available")
+            self.print_result("GET /auth/me", False, "No access token available")
             return False
         
         try:
-            headers = {"Authorization": f"Bearer {self.access_token}"}
-            response = self.session.get(
-                f"{self.api_base}/auth/me",
-                headers=headers
-            )
+            response = self.session.get(f"{self.api_base}/auth/me")
             
             if response.status_code == 200:
                 data = response.json()
-                required_fields = ["id", "name", "email", "role", "district"]
+                required_fields = ["id", "name", "email", "role", "created_at"]
                 
                 if all(field in data for field in required_fields):
-                    self.print_result("Me", True, f"User info retrieved: {data['email']}")
+                    self.print_result("GET /auth/me", True, f"User info retrieved: {data['email']}")
                     return True
                 else:
-                    self.print_result("Me", False, f"Missing fields in response: {data}")
+                    self.print_result("GET /auth/me", False, f"Missing fields in response: {data}")
                     return False
             else:
-                self.print_result("Me", False, f"Status: {response.status_code}, Response: {response.text}")
+                self.print_result("GET /auth/me", False, f"Status: {response.status_code}, Response: {response.text}")
                 return False
                 
         except Exception as e:
-            self.print_result("Me", False, f"Exception: {str(e)}")
+            self.print_result("GET /auth/me", False, f"Exception: {str(e)}")
             return False
     
     def test_refresh_token(self) -> bool:
@@ -157,7 +170,7 @@ class AuthTester:
         print("🧪 Testing /auth/refresh-token...")
         
         if not self.refresh_token:
-            self.print_result("Refresh Token", False, "No refresh token available")
+            self.print_result("POST /auth/refresh-token", False, "No refresh token available")
             return False
         
         try:
@@ -174,17 +187,19 @@ class AuthTester:
                 if all(field in response_data for field in required_fields):
                     old_token = self.access_token
                     self.access_token = response_data["access_token"]
-                    self.print_result("Refresh Token", True, "New access token generated")
+                    # Update session headers with new token
+                    self.session.headers.update({"Authorization": f"Bearer {self.access_token}"})
+                    self.print_result("POST /auth/refresh-token", True, "New access token generated")
                     return True
                 else:
-                    self.print_result("Refresh Token", False, f"Missing fields in response: {response_data}")
+                    self.print_result("POST /auth/refresh-token", False, f"Missing fields in response: {response_data}")
                     return False
             else:
-                self.print_result("Refresh Token", False, f"Status: {response.status_code}, Response: {response.text}")
+                self.print_result("POST /auth/refresh-token", False, f"Status: {response.status_code}, Response: {response.text}")
                 return False
                 
         except Exception as e:
-            self.print_result("Refresh Token", False, f"Exception: {str(e)}")
+            self.print_result("POST /auth/refresh-token", False, f"Exception: {str(e)}")
             return False
     
     def test_logout(self) -> bool:
@@ -192,30 +207,26 @@ class AuthTester:
         print("🧪 Testing /auth/logout...")
         
         if not self.access_token:
-            self.print_result("Logout", False, "No access token available")
+            self.print_result("POST /auth/logout", False, "No access token available")
             return False
         
         try:
-            headers = {"Authorization": f"Bearer {self.access_token}"}
-            response = self.session.post(
-                f"{self.api_base}/auth/logout",
-                headers=headers
-            )
+            response = self.session.post(f"{self.api_base}/auth/logout")
             
             if response.status_code == 200:
                 data = response.json()
                 if data.get("message") == "Successfully logged out":
-                    self.print_result("Logout", True, "User logged out successfully")
+                    self.print_result("POST /auth/logout", True, "User logged out successfully")
                     return True
                 else:
-                    self.print_result("Logout", False, f"Unexpected response: {data}")
+                    self.print_result("POST /auth/logout", False, f"Unexpected response: {data}")
                     return False
             else:
-                self.print_result("Logout", False, f"Status: {response.status_code}, Response: {response.text}")
+                self.print_result("POST /auth/logout", False, f"Status: {response.status_code}, Response: {response.text}")
                 return False
                 
         except Exception as e:
-            self.print_result("Logout", False, f"Exception: {str(e)}")
+            self.print_result("POST /auth/logout", False, f"Exception: {str(e)}")
             return False
     
     def test_google_auth(self) -> bool:
