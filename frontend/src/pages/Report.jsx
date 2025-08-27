@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import back from "../assets/back.png";
 
 const Report = () => {
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, []);
   let problems = [
     "Pothole",
     "Dumping",
@@ -22,19 +29,46 @@ const Report = () => {
           backgroundSize: "70%",
           backgroundPosition: "right",
           backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+          position: "absolute",
           height: "100vh",
           width: "100%",
-          filter: "blue(500px)",
+          filter: "blur(30px)",
+          zIndex: -1,
         }}
+      ></div>
+      <div
+        className="mt-23 ml-33 blur-none"
+        style={{ position: "relative", zIndex: 1 }}
       >
         <div>
           <div>
+            <div>Report of Pothole</div>
             <div>
-              <div>Report of Pothole</div>
               <div>Img</div>
+              <div>
+                <div>Details</div>
+                <div>Reported By</div>
+                <div>Date/Time</div>
+                <div>Location</div>
+                <div>Department</div>
+                <div>
+                  <div>Description</div>
+                  <div>Detail</div>
+                </div>
+              </div>
             </div>
-            <div></div>
+            <div>
+              <div>Timeline</div>
+              <div>
+                <div>Reported</div>
+                <div>Assigned</div>
+                <div>In Progress</div>
+                <div>Resolved</div>
+              </div>
+            </div>
           </div>
+          <div></div>
         </div>
       </div>
     </>
