@@ -67,6 +67,220 @@ Once the server is running, you can access:
 - **Interactive API docs**: `http://localhost:8000/docs`
 - **Alternative docs**: `http://localhost:8000/redoc`
 
+### 🔐 Authentication API
+
+All authentication endpoints are prefixed with `/api/auth`. The API uses JWT tokens for authentication.
+
+#### **Base URL**
+```
+http://localhost:8000/api
+```
+
+#### **1. User Registration**
+```http
+POST /api/auth/signup
+```
+
+**Description:** Create a new user account with citizen role (role=0). Returns JWT tokens for immediate login.
+
+**Request Body:**
+```json
+{
+  "name": "string",
+  "email": "user@example.com", 
+  "password": "string",
+  "phone": "string",
+  "district": "string"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "phone": "1234567890",
+    "district": "Downtown",
+    "role": 0,
+    "is_google": false,
+    "created_at": "2025-08-27T12:30:45.123456"
+  }
+}
+```
+
+#### **2. User Login**
+```http
+POST /api/auth/login
+```
+
+**Description:** Authenticate existing user with email/password. Returns access and refresh tokens.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "string",
+  "role": 0
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "phone": "1234567890",
+    "district": "Downtown",
+    "role": 0,
+    "is_google": false,
+    "created_at": "2025-08-27T12:30:45.123456"
+  }
+}
+```
+
+#### **3. Google OAuth Authentication**
+```http
+POST /api/auth/google
+```
+
+**Description:** Authenticate or create user via Google ID token. Requires `GOOGLE_CLIENT_ID` in environment variables.
+
+**Request Body:**
+```json
+{
+  "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjdkYzAyN..."
+}
+```
+
+**Response (200 OK):** Same as login response with Google user data.
+
+#### **4. Get Current User**
+```http
+GET /api/auth/me
+```
+
+**Description:** Get current authenticated user information.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "1234567890",
+  "district": "Downtown",
+  "role": 0,
+  "is_google": false,
+  "created_at": "2025-08-27T12:30:45.123456"
+}
+```
+
+#### **5. Refresh Access Token**
+```http
+POST /api/auth/refresh-token
+```
+
+**Description:** Generate new access token using refresh token.
+
+**Request Body:**
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+#### **6. User Logout**
+```http
+POST /api/auth/logout
+```
+
+**Description:** Logout user (stateless - client should delete tokens).
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Successfully logged out"
+}
+```
+
+#### **🔑 Token Information**
+
+- **Access Token Lifespan**: 500 minutes (8+ hours)
+- **Refresh Token Lifespan**: 7 days
+- **Token Usage**: Include in `Authorization` header as `Bearer <token>`
+
+#### **👥 User Roles**
+- `0`: Citizen (default)
+- `1`: Authority  
+- `2`: Admin
+
+#### **🛡️ Security Features**
+- ✅ JWT Authentication with HS256 algorithm
+- ✅ Password hashing with bcrypt
+- ✅ Google OAuth integration
+- ✅ Role-based access control
+- ✅ Token refresh mechanism
+- ✅ Input validation with Pydantic
+- ✅ UUID primary keys
+
+#### **📱 Frontend Integration Example**
+
+```javascript
+// Register and login
+const signupResponse = await fetch('/api/auth/signup', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    name: 'John Doe',
+    email: 'john@example.com',
+    password: 'securepass123',
+    phone: '1234567890',
+    district: 'Downtown'
+  })
+});
+
+const { access_token, refresh_token } = await signupResponse.json();
+
+// Store tokens securely
+localStorage.setItem('access_token', access_token);
+localStorage.setItem('refresh_token', refresh_token);
+
+// Use token for authenticated requests
+const userResponse = await fetch('/api/auth/me', {
+  headers: { 'Authorization': `Bearer ${access_token}` }
+});
+```
+
+### 🤖 Other Available Endpoints
+
 ## Project Structure
 
 ```
