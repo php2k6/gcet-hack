@@ -14,14 +14,18 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-
 # Import your models and Base
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'app')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from app.database import Base
 from app import models  # Ensure all models are imported
+from app.config import settings
+
 target_metadata = Base.metadata
+
+# Set the database URL from your app settings
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
