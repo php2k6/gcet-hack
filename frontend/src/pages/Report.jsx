@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import back from "../assets/back.png";
 import image from "../assets/pothole1.png";
+import {
+  Timeline,
+  TimelineBody,
+  TimelineContent,
+  TimelineItem,
+  TimelinePoint,
+  TimelineTime,
+  TimelineTitle,
+} from "flowbite-react";
 
 const Report = () => {
   useEffect(() => {
@@ -28,6 +37,17 @@ const Report = () => {
     "Traffic Signal Issue",
     "Others",
   ];
+  var curstage = 2;
+  const stages = [
+    { id: 1, name: "Posted", position: "bottom" },
+    { id: 2, name: "Under Review", position: "top" },
+    { id: 3, name: "In progress", position: "bottom" },
+    { id: 4, name: "Resolved", position: "top" },
+    { id: 5, name: "Verified", position: "bottom" },
+  ];
+
+  const com = (sid) => sid <= curstage;
+  const cur = (sid) => sid == curstage;
   //   let image = "../assets/pothole1.png";
   return (
     <>
@@ -109,10 +129,52 @@ const Report = () => {
             <div>
               <div>Timeline</div>
               <div>
-                <div>Reported</div>
-                <div>Assigned</div>
-                <div>In Progress</div>
-                <div>Resolved</div>
+                <Timeline horizontal>
+                  <TimelineItem>
+                    <TimelinePoint className="bg-pink-500" />
+                    <TimelineContent>
+                      <TimelineTitle className="text-pink-600">
+                        Posted
+                      </TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+
+                  <TimelineItem>
+                    <TimelinePoint className="bg-pink-500" />
+                    <TimelineContent>
+                      <TimelineTitle className="text-pink-600">
+                        Under Review
+                      </TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+
+                  <TimelineItem>
+                    <TimelinePoint className="bg-gray-300" />
+                    <TimelineContent>
+                      <TimelineTitle className="text-gray-500">
+                        In Progress
+                      </TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+
+                  <TimelineItem>
+                    <TimelinePoint className="bg-gray-300" />
+                    <TimelineContent>
+                      <TimelineTitle className="text-gray-500">
+                        Resolved
+                      </TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+
+                  <TimelineItem>
+                    <TimelinePoint className="bg-gray-300" />
+                    <TimelineContent>
+                      <TimelineTitle className="text-gray-500">
+                        Verified
+                      </TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+                </Timeline>
               </div>
             </div>
           </div>
