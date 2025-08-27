@@ -1,10 +1,14 @@
 import React from "react";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react"; // nice icons
-
+// import { GoogleLogin } from "@react-oauth/google";
+import { useGoogleLogin } from "@react-oauth/google";
 const Login = () => {
   const [flipped, setFlipped] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const login = useGoogleLogin({
+    onSuccess: (tokenResponse) => console.log(tokenResponse),
+  });
   return (
     <>
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-tr from-indigo-500 via-violet-500 to-pink-500 p-5">
@@ -25,19 +29,17 @@ const Login = () => {
                   </p>
                 </div>
 
-                {/* Email */}
                 <div className="mb-3">
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Email Address
                   </label>
                   <input
                     type="email"
-                    placeholder="john@example.com"
+                    placeholder="php@gcet.com"
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 transition outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
                   />
                 </div>
 
-                {/* Password */}
                 <div className="relative mb-4">
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Password
@@ -79,7 +81,10 @@ const Login = () => {
                   <div className="absolute top-1/2 left-0 -z-0 h-px w-full bg-slate-200"></div>
                 </div>
                 <div className="mb-4 flex gap-3">
-                  <button className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 transition hover:border-indigo-500 hover:shadow-md">
+                  <button
+                    onClick={() => login()}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 transition hover:border-indigo-500 hover:shadow-md"
+                  >
                     <span>
                       {" "}
                       <svg

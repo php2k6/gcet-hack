@@ -1,10 +1,14 @@
 import React from "react";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useGoogleLogin } from "@react-oauth/google";
 
 const Signup = () => {
   const [flipped, setFlipped] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const login = useGoogleLogin({
+    onSuccess: (tokenResponse) => console.log(tokenResponse),
+  });
   return (
     <>
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-tr from-indigo-500 via-violet-500 to-pink-500 p-5">
@@ -23,7 +27,10 @@ const Signup = () => {
                 </div>
 
                 <div className="mb-4 flex gap-3">
-                  <button className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 transition hover:border-indigo-500 hover:shadow-md">
+                  <button
+                    onClick={() => login()}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 transition hover:border-indigo-500 hover:shadow-md"
+                  >
                     <span>
                       {" "}
                       <svg
