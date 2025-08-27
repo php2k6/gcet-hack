@@ -74,7 +74,7 @@ const Report = () => {
       >
         <div>
           <div>
-            <div className="text-4xl font-bold">Report of Pothole</div>
+            <div className="text-4xl font-bold">Report of {problems[0]}</div>
             <div className="flex">
               <div className="mt-5 w-1/3 rounded-xs">
                 <img className="h-100" src={image} alt="IMG" />
