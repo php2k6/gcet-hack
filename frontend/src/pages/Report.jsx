@@ -131,78 +131,43 @@ const Report = () => {
             </div>
             <div className="mt-5 w-full">
               <div className="text-2xl font-bold">Timeline:</div>
-              <div className="mt-5 ml-30 w-full max-w-4xl">
-                <style jsx>{`
-                  .timeline-container .flowbite-timeline-horizontal::after {
-                    display: none !important;
-                  }
-                  .timeline-container
-                    .flowbite-timeline-item:last-child::after {
-                    display: none !important;
-                  }
-                `}</style>
-                <Timeline horizontal className="w-full">
-                  {stages.map((stage) => (
-                    <TimelineItem key={stage.id}>
-                      <TimelinePoint
-                        className={
-                          curstage >= stage.id ? "bg-pink-500" : "bg-gray-300"
-                        }
-                        icon={curstage >= stage.id ? FaCheck : null}
-                      ></TimelinePoint>
-                      <TimelineContent>
-                        <TimelineTime>{stage.date}</TimelineTime>
-                        <TimelineTitle
+              <center>
+                <div className="mt-5 ml-30 h-screen w-full max-w-4xl">
+                  <style jsx>{`
+                    .timeline-container .flowbite-timeline-horizontal::after {
+                      display: none !important;
+                    }
+                    .timeline-container
+                      .flowbite-timeline-item:last-child::after {
+                      display: none !important;
+                    }
+                  `}</style>
+                  <Timeline horizontal className="w-full">
+                    {stages.map((stage) => (
+                      <TimelineItem key={stage.id}>
+                        <TimelinePoint
                           className={
-                            curstage >= stage.id
-                              ? "text-pink-600"
-                              : "text-gray-500"
+                            curstage >= stage.id ? "bg-pink-500" : "bg-gray-300"
                           }
-                        >
-                          {stage.name}
-                        </TimelineTitle>
-                      </TimelineContent>
-                    </TimelineItem>
-                  ))}
-                </Timeline>
-                {/* <Timeline className="mt-10 ml-10" horizontal>
-                  <TimelineItem>
-                    <TimelinePoint icon={FaCheck} />
-                    <TimelineContent>
-                      <TimelineTime>Feb 2025</TimelineTime>
-                      <TimelineTitle>Complain Posted</TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
-                  <TimelineItem>
-                    <TimelinePoint icon={FaCheck} />
-                    <TimelineContent>
-                      <TimelineTime>Feb 2025</TimelineTime>
-                      <TimelineTitle>Under Review</TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
-                  <TimelineItem>
-                    <TimelinePoint icon={FaCheck} />
-                    <TimelineContent>
-                      <TimelineTime>Feb 2025</TimelineTime>
-                      <TimelineTitle>In progress</TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
-                  <TimelineItem>
-                    <TimelinePoint icon={FaCheck} />
-                    <TimelineContent>
-                      <TimelineTime>April 2025</TimelineTime>
-                      <TimelineTitle>Complain Resolved</TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
-                  <TimelineItem>
-                    <TimelinePoint />
-                    <TimelineContent>
-                      <TimelineTime>May 2025</TimelineTime>
-                      <TimelineTitle>Verified by Users</TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
-                </Timeline> */}
-              </div>
+                          icon={curstage >= stage.id ? FaCheck : null}
+                        ></TimelinePoint>
+                        <TimelineContent>
+                          <TimelineTime>{stage.date}</TimelineTime>
+                          <TimelineTitle
+                            className={
+                              curstage >= stage.id
+                                ? "text-pink-600"
+                                : "text-gray-500"
+                            }
+                          >
+                            {stage.name}
+                          </TimelineTitle>
+                        </TimelineContent>
+                      </TimelineItem>
+                    ))}
+                  </Timeline>
+                </div>
+              </center>
             </div>
           </div>
           <div></div>
