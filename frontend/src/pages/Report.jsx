@@ -30,7 +30,7 @@ const Report = () => {
   var loc = "Anand,Gujarat";
   var dep = "Anand Municipal Corporation";
   var des =
-    "There is a large and deep pothole on the main road in Bakrol, near. It is located right in the middle of the road and is a significant hazard for two-wheelers and other vehicles. The recent rains have made it difficult to spot, increasing the risk of accidents. ";
+    "There is a large and deep pothole on the main road in Bakrol. It is located right in the middle of the road and is a significant hazard for two-wheelers and other vehicles. The recent rains have made it difficult to spot, increasing the risk of accidents. ";
   let problems = [
     "Pothole",
     "Dumping",
@@ -101,18 +101,18 @@ const Report = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="1.5"
+                      strokeWidth="1.5"
                       stroke="currentColor"
-                      class="inline h-6 w-6 text-blue-500"
+                      className="inline h-6 w-6 text-blue-500"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
                       />
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
                       />
                     </svg>
@@ -136,15 +136,6 @@ const Report = () => {
                 <div className="text-2xl font-bold">Timeline:</div>
                 <center>
                   <div className="mt-5 ml-30 h-screen w-full max-w-4xl">
-                    <style jsx>{`
-                      .timeline-container .flowbite-timeline-horizontal::after {
-                        display: none !important;
-                      }
-                      .timeline-container
-                        .flowbite-timeline-item:last-child::after {
-                        display: none !important;
-                      }
-                    `}</style>
                     <Timeline horizontal className="w-full">
                       {stages.map((stage) => (
                         <TimelineItem key={stage.id}>
