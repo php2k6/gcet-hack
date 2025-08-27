@@ -43,10 +43,10 @@ const Report = () => {
       >
         <div>
           <div>
-            <div>Report of Pothole</div>
-            <div>
-              <div>Img</div>
-              <div>
+            <div className="text-4xl font-bold">Report of Pothole</div>
+            <div className="flex gap-6">
+              <div className="w-1/2">Img</div>
+              <div className="flex w-1/2 flex-col justify-start gap-5 space-y-4">
                 <div>Details</div>
                 <div>Reported By</div>
                 <div>Date/Time</div>

@@ -1,14 +1,14 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,jsx,ts,tsx}",
-  ],
+  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        bitter: ["Bitter", "serif"],
+      },
       colors: {
         primary: {
-          DEFAULT: '#ff9800', // Orange
+          DEFAULT: "#ff9800", // Orange
         },
       },
     },
