@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import back from "../assets/back.png";
 import image from "../assets/pothole1.png";
+import { Check } from "lucide-react";
+import { FaCheck } from "react-icons/fa";
+
 import {
   Timeline,
   TimelineBody,
@@ -37,13 +40,13 @@ const Report = () => {
     "Traffic Signal Issue",
     "Others",
   ];
-  var curstage = 2;
+  var curstage = 4;
   const stages = [
-    { id: 1, name: "Posted", position: "bottom" },
-    { id: 2, name: "Under Review", position: "top" },
-    { id: 3, name: "In progress", position: "bottom" },
-    { id: 4, name: "Resolved", position: "top" },
-    { id: 5, name: "Verified", position: "bottom" },
+    { id: 1, name: "Posted", date: "Feb 2025" },
+    { id: 2, name: "Under Review", date: "Feb 2025" },
+    { id: 3, name: "In progress", date: "Feb 2025" },
+    { id: 4, name: "Resolved", date: "April 2025" },
+    { id: 5, name: "Verified", date: "TBA" },
   ];
 
   const com = (sid) => sid <= curstage;
@@ -126,55 +129,79 @@ const Report = () => {
                 </div>
               </div>
             </div>
-            <div>
-              <div>Timeline</div>
-              <div>
-                <Timeline horizontal>
-                  <TimelineItem>
-                    <TimelinePoint className="bg-pink-500" />
-                    <TimelineContent>
-                      <TimelineTitle className="text-pink-600">
-                        Posted
-                      </TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
-
-                  <TimelineItem>
-                    <TimelinePoint className="bg-pink-500" />
-                    <TimelineContent>
-                      <TimelineTitle className="text-pink-600">
-                        Under Review
-                      </TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
-
-                  <TimelineItem>
-                    <TimelinePoint className="bg-gray-300" />
-                    <TimelineContent>
-                      <TimelineTitle className="text-gray-500">
-                        In Progress
-                      </TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
-
-                  <TimelineItem>
-                    <TimelinePoint className="bg-gray-300" />
-                    <TimelineContent>
-                      <TimelineTitle className="text-gray-500">
-                        Resolved
-                      </TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
-
-                  <TimelineItem>
-                    <TimelinePoint className="bg-gray-300" />
-                    <TimelineContent>
-                      <TimelineTitle className="text-gray-500">
-                        Verified
-                      </TimelineTitle>
-                    </TimelineContent>
-                  </TimelineItem>
+            <div className="mt-5 w-full">
+              <div className="text-2xl font-bold">Timeline:</div>
+              <div className="mt-5 ml-30 w-full max-w-4xl">
+                <style jsx>{`
+                  .timeline-container .flowbite-timeline-horizontal::after {
+                    display: none !important;
+                  }
+                  .timeline-container
+                    .flowbite-timeline-item:last-child::after {
+                    display: none !important;
+                  }
+                `}</style>
+                <Timeline horizontal className="w-full">
+                  {stages.map((stage) => (
+                    <TimelineItem key={stage.id}>
+                      <TimelinePoint
+                        className={
+                          curstage >= stage.id ? "bg-pink-500" : "bg-gray-300"
+                        }
+                        icon={curstage >= stage.id ? FaCheck : null}
+                      ></TimelinePoint>
+                      <TimelineContent>
+                        <TimelineTime>{stage.date}</TimelineTime>
+                        <TimelineTitle
+                          className={
+                            curstage >= stage.id
+                              ? "text-pink-600"
+                              : "text-gray-500"
+                          }
+                        >
+                          {stage.name}
+                        </TimelineTitle>
+                      </TimelineContent>
+                    </TimelineItem>
+                  ))}
                 </Timeline>
+                {/* <Timeline className="mt-10 ml-10" horizontal>
+                  <TimelineItem>
+                    <TimelinePoint icon={FaCheck} />
+                    <TimelineContent>
+                      <TimelineTime>Feb 2025</TimelineTime>
+                      <TimelineTitle>Complain Posted</TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+                  <TimelineItem>
+                    <TimelinePoint icon={FaCheck} />
+                    <TimelineContent>
+                      <TimelineTime>Feb 2025</TimelineTime>
+                      <TimelineTitle>Under Review</TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+                  <TimelineItem>
+                    <TimelinePoint icon={FaCheck} />
+                    <TimelineContent>
+                      <TimelineTime>Feb 2025</TimelineTime>
+                      <TimelineTitle>In progress</TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+                  <TimelineItem>
+                    <TimelinePoint icon={FaCheck} />
+                    <TimelineContent>
+                      <TimelineTime>April 2025</TimelineTime>
+                      <TimelineTitle>Complain Resolved</TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+                  <TimelineItem>
+                    <TimelinePoint />
+                    <TimelineContent>
+                      <TimelineTime>May 2025</TimelineTime>
+                      <TimelineTitle>Verified by Users</TimelineTitle>
+                    </TimelineContent>
+                  </TimelineItem>
+                </Timeline> */}
               </div>
             </div>
           </div>
