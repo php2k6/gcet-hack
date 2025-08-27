@@ -7,9 +7,12 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        bitter: ["Bitter", "serif"],
+      },
       colors: {
         primary: {
-          DEFAULT: '#ff9800', // Orange
+          DEFAULT: "#ff9800", // Orange
         },
         dark: {
           DEFAULT: '#003049', 
