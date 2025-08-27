@@ -1,13 +1,33 @@
-# Authentication Testing Suite
+# Test Suite Documentation
 
-This folder contains comprehensive tests for all authentication endpoints.
+This directory contains comprehensive test scripts for the GCET Hack Backend API.
 
-## Test Files
+## 🧪 Test Files
 
-### 1. `test_auth_endpoints.py` 
-**Main test suite** - Tests all auth endpoints comprehensively:
-- ✅ `/auth/signup` - User registration
-- ✅ `/auth/login` - Email/password login  
+### **1. Authentication Tests (`test_auth_endpoints.py`)**
+- **Tests**: 8 comprehensive authentication tests
+- **Endpoints Covered**:
+  - `POST /auth/signup` - User registration (no tokens returned)
+  - `POST /auth/login` - User authentication with tokens
+  - `GET /auth/me` - Get current user profile
+  - `POST /auth/refresh-token` - Refresh access token
+  - `POST /auth/logout` - User logout
+  - `POST /auth/google` - Google OAuth (validates endpoint exists)
+  - Invalid credentials handling
+  - Duplicate email prevention
+
+### **2. User Management Tests (`test_user_endpoints.py`)**
+- **Tests**: 4 user management tests
+- **Endpoints Covered**:
+  - `GET /user/me` - Get current user profile
+  - `PATCH /user/me` - Update current user profile
+  - `GET /user/{user_id}` - Get user by ID
+  - `GET /user/all` - Admin-only endpoint (tests access control)
+
+### **3. Test Runner (`run_all_tests.py`)**
+- Runs all test suites in sequence
+- Provides comprehensive summary
+- Easy one-command testing  
 - ✅ `/auth/me` - Get current user info
 - ✅ `/auth/refresh-token` - Refresh access token
 - ✅ `/auth/logout` - User logout
