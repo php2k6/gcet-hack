@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navigation from "./components/Navigation";
 import { ThemeProvider, createTheme } from "flowbite-react";
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './libs/react-query';
 
 // Pages
 import Home from "./pages/Home";
@@ -10,6 +12,9 @@ import Complaints from "./pages/Complaints";
 import Heatmap from "./pages/Heatmap";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+import ComplaintDetails from "./pages/ComplaintDetails";
+import Profile from "./pages/profile";
+import NotFound from "./pages/NotFound";
 
 export default function App() {
   const customTheme = createTheme({
@@ -72,7 +77,7 @@ export default function App() {
   });
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={customTheme} defaultTheme="system" enableSystem>
         <Router>
           {/* Navbar always visible */}
@@ -87,9 +92,13 @@ export default function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/login" element={<Login />} />
             <Route path="/report" element={<Report />} />
+            <Route path="/profile" element={<Profile />} />
+            {/* <Route path="/complaints/new" element={<NewComplaint />} /> */}
+            <Route path="/complaints/:id" element={<ComplaintDetails />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
       </ThemeProvider>
-    </>
+    </QueryClientProvider>
   );
 }
