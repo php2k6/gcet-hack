@@ -3,6 +3,7 @@ import back from "../assets/back.png";
 import image from "../assets/pothole1.png";
 import { Check } from "lucide-react";
 import { FaCheck } from "react-icons/fa";
+import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 
 import {
   Timeline,
@@ -22,6 +23,7 @@ const Report = () => {
       document.body.style.overflow = "auto";
     };
   }, []);
+  var vote = 5;
   var by = "Arjun Patel";
   var da = "5th Sept 2025";
   var ti = "2:00 pm";
@@ -129,45 +131,63 @@ const Report = () => {
                 </div>
               </div>
             </div>
-            <div className="mt-5 w-full">
-              <div className="text-2xl font-bold">Timeline:</div>
-              <center>
-                <div className="mt-5 ml-30 h-screen w-full max-w-4xl">
-                  <style jsx>{`
-                    .timeline-container .flowbite-timeline-horizontal::after {
-                      display: none !important;
-                    }
-                    .timeline-container
-                      .flowbite-timeline-item:last-child::after {
-                      display: none !important;
-                    }
-                  `}</style>
-                  <Timeline horizontal className="w-full">
-                    {stages.map((stage) => (
-                      <TimelineItem key={stage.id}>
-                        <TimelinePoint
-                          className={
-                            curstage >= stage.id ? "bg-pink-500" : "bg-gray-300"
-                          }
-                          icon={curstage >= stage.id ? FaCheck : null}
-                        ></TimelinePoint>
-                        <TimelineContent>
-                          <TimelineTime>{stage.date}</TimelineTime>
-                          <TimelineTitle
+            <div className="mt-5 flex w-full">
+              <div className="w-1/2">
+                <div className="text-2xl font-bold">Timeline:</div>
+                <center>
+                  <div className="mt-5 ml-30 h-screen w-full max-w-4xl">
+                    <style jsx>{`
+                      .timeline-container .flowbite-timeline-horizontal::after {
+                        display: none !important;
+                      }
+                      .timeline-container
+                        .flowbite-timeline-item:last-child::after {
+                        display: none !important;
+                      }
+                    `}</style>
+                    <Timeline horizontal className="w-full">
+                      {stages.map((stage) => (
+                        <TimelineItem key={stage.id}>
+                          <TimelinePoint
                             className={
                               curstage >= stage.id
-                                ? "text-pink-600"
-                                : "text-gray-500"
+                                ? "bg-pink-500"
+                                : "bg-gray-300"
                             }
-                          >
-                            {stage.name}
-                          </TimelineTitle>
-                        </TimelineContent>
-                      </TimelineItem>
-                    ))}
-                  </Timeline>
+                            icon={curstage >= stage.id ? FaCheck : null}
+                          ></TimelinePoint>
+                          <TimelineContent>
+                            <TimelineTime>{stage.date}</TimelineTime>
+                            <TimelineTitle
+                              className={
+                                curstage >= stage.id
+                                  ? "text-pink-600"
+                                  : "text-gray-500"
+                              }
+                            >
+                              {stage.name}
+                            </TimelineTitle>
+                          </TimelineContent>
+                        </TimelineItem>
+                      ))}
+                    </Timeline>
+                  </div>
+                </center>
+              </div>
+              <div className="ml-40 w-1/2">
+                <div className="text-2xl font-bold">Votes</div>
+                <div className="ml-5">
+                  <button className="bg-green-100/0 text-blue-600 hover:text-pink-600 dark:text-green-400 dark:hover:text-green-400">
+                    <FaArrowUp />
+                  </button>
+                  <p className="my-1 text-lg font-semibold text-gray-900 dark:text-white">
+                    {vote}
+                  </p>
+                  <button className="bg-green-100/0 text-blue-600 hover:text-pink-600 dark:text-green-400 dark:hover:text-green-400">
+                    <FaArrowDown />
+                  </button>
                 </div>
-              </center>
+              </div>
             </div>
           </div>
           <div></div>
