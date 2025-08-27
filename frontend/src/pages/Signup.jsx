@@ -2,12 +2,31 @@ import React from "react";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useGoogleLogin } from "@react-oauth/google";
+import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
   const [flipped, setFlipped] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
   const login = useGoogleLogin({
-    onSuccess: (tokenResponse) => console.log(tokenResponse),
+    onSuccess: async (tokenResponse) => {
+      try {
+        // Fetch user profile info from Google API
+        const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: {
+            Authorization: `Bearer ${tokenResponse.access_token}`,
+          },
+        });
+        const profile = await res.json();
+        // profile.picture contains the user's profile photo URL
+        // console.log("Profile:", profile);
+        localStorage.setItem("access_token", tokenResponse.access_token);
+        localStorage.setItem("profile_photo", profile.picture);
+        navigate("/");
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+      }
+    },
   });
   return (
     <>

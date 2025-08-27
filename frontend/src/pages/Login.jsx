@@ -3,20 +3,38 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react"; // nice icons
 // import { GoogleLogin } from "@react-oauth/google";
 import { useGoogleLogin } from "@react-oauth/google";
+import { MyToast } from "../components/MyToast";
+import { useNavigate } from "react-router";
 const Login = () => {
   const [flipped, setFlipped] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
+  
   const login = useGoogleLogin({
-    onSuccess: (tokenResponse) => console.log(tokenResponse),
+    onSuccess: (tokenResponse) => {
+      console.log(tokenResponse);
+      setToast({ type: "success", message: "Login Successful!" });
+      localStorage.setItem("access_token", tokenResponse.access_token);
+      //  wait 3 sec and navigate
+      setTimeout(() => {
+        navigate("/")
+      }, 3000);
+    },
+    onError: (error) => {
+      setToast({ type: "error", message: "Login Failed!" });
+      console.log("Login Failed:", error);
+    }
+
+
   });
   return (
     <>
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-tr from-indigo-500 via-violet-500 to-pink-500 p-5">
         <div className="perspective relative min-h-[680px] w-[420px]">
           <div
-            className={`transform-style-preserve-3d relative min-h-[680px] w-full transition-transform duration-700 ${
-              flipped ? "rotate-y-180" : ""
-            }`}
+            className={`transform-style-preserve-3d relative min-h-[680px] w-full transition-transform duration-700 ${flipped ? "rotate-y-180" : ""
+              }`}
           >
             <form action="#">
               <div className="absolute mt-20 flex min-h-[600px] w-full flex-col justify-start rounded-2xl border border-white/30 bg-white/90 p-8 shadow-2xl backdrop-blur-xl">
@@ -118,6 +136,7 @@ const Login = () => {
           </div>
         </div>
       </div>
+      {toast && <MyToast {...toast} />}
     </>
   );
 };

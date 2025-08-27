@@ -1,76 +1,79 @@
 import React, { useEffect, useRef } from "react";
 import {
-  DarkThemeToggle,
-  Button,
-  Navbar,
-  NavbarBrand,
-  NavbarCollapse,
-  NavbarToggle,
-  useThemeMode,
+    DarkThemeToggle,
+    Button,
+    Navbar,
+    NavbarBrand,
+    NavbarCollapse,
+    NavbarToggle,
+    useThemeMode,
 } from "flowbite-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { gsap } from "gsap";
+import usericon from "../assets/user.png"
 
 import logo from "../assets/logo.svg";
 import logodark from "../assets/logo-dark.svg";
 
 const Navigation = () => {
-  const { mode } = useThemeMode();
-  const underlineRef = useRef(null);
-  const linksRef = useRef([]);
-  const navbarRef = useRef([]);
-  const location = useLocation();
+    const { mode } = useThemeMode();
+    const underlineRef = useRef(null);
+    const linksRef = useRef([]);
+    const navbarRef = useRef([]);
+    const location = useLocation();
+    const isLoggedIn = Boolean(localStorage.getItem("access_token"));
 
-  // Move underline when route changes
-  useEffect(() => {
-    const activeLink = document.querySelector(".nav-link.active");
-    if (activeLink && underlineRef.current) {
-      const { offsetLeft, offsetWidth } = activeLink;
-      gsap.to(underlineRef.current, {
-        left: offsetLeft,
-        width: offsetWidth,
-        duration: 0.4,
-        ease: "power3.inout",
-      });
-    }
-  }, [location]);
-  // transition border radius of navbar on scroll from 0 to 500px
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const maxScroll = window.innerHeight * 1;
-      const progress = Math.min(scrollY / maxScroll, 1);
-      const borderRadius = progress * 9999;
-      if (navbarRef.current) {
-        navbarRef.current.style.borderRadius = `${borderRadius}px`;
-      }
-    };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
+    // Move underline when route changes
+    useEffect(() => {
+        const activeLink = document.querySelector(".nav-link.active");
+        if (activeLink && underlineRef.current) {
+            const { offsetLeft, offsetWidth } = activeLink;
+            gsap.to(underlineRef.current, {
+                left: offsetLeft,
+                width: offsetWidth,
+                duration: 0.4,
+                ease: "power3.inout",
+            });
+        }
+    }, [location]);
+    // transition border radius of navbar on scroll from 0 to 500px
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrollY = window.scrollY;
+            const maxScroll = window.innerHeight * 1;
+            const progress = Math.min(scrollY / maxScroll, 1);
+            const borderRadius = progress * 9999;
+            if (navbarRef.current) {
+                navbarRef.current.style.borderRadius = `${borderRadius}px`;
+            }
+        };
 
-  // Animate navbar links
-  useEffect(() => {
-    gsap.fromTo(
-      navbarRef.current,
-      { y: -100 },
-      { y: 0, duration: 1.1, ease: "power3.out" },
-    );
-    gsap.fromTo(
-      linksRef.current,
-      { y: -30, opacity: 0 },
-      {
-        y: 0,
-        opacity: 1,
-        duration: 0.8,
-        ease: "power3.out",
-        stagger: 0.2,
-      },
-    );
-  }, []);
+        window.addEventListener("scroll", handleScroll);
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+        };
+    }, []);
+
+    // Animate navbar links
+    useEffect(() => {
+        gsap.fromTo(
+            navbarRef.current,
+            { y: -100 },
+            { y: 0, duration: 1.1, ease: "power3.out" },
+        );
+        gsap.fromTo(
+            linksRef.current,
+            { y: -30, opacity: 0 },
+            {
+                y: 0,
+                opacity: 1,
+                duration: 0.8,
+                ease: "power3.out",
+                stagger: 0.2,
+            },
+        );
+    }, []);
 
     return (
         <Navbar
@@ -86,54 +89,62 @@ const Navigation = () => {
                 />
             </NavbarBrand>
 
-      {/* Right side */}
-      <div className="flex items-center space-x-2 md:order-2">
-        <Button
-          as={NavLink}
-          to="/signup"
-          className="primary-btn text-xl"
-          color="primary"
-        >
-          Signup
-        </Button>
-        <DarkThemeToggle />
-        <NavbarToggle />
-      </div>
+                        <div className="flex items-center space-x-2 md:order-2">
+                            <DarkThemeToggle />
+                            {isLoggedIn ? (
+                                <NavLink to="/profile">
+                                    <img
+                                        src={`${localStorage.getItem("profile_photo") || usericon}`}
+                                        alt="Profile"
+                                        className="w-10 h-10 rounded-full border-2 border-blue-500 object-cover"
+                                    />
+                                </NavLink>
+                            ) : (
+                                <Button
+                                    as={NavLink}
+                                    to="/signup"
+                                    className="primary-btn text-xl"
+                                    color="primary"
+                                >
+                                    Signup
+                                </Button>
+                            )}
+                            <NavbarToggle />
+                        </div>
 
-      {/* Collapsible Menu */}
-      <NavbarCollapse className="relative">
-        {[
-          { to: "/", label: "Home" },
-          { to: "/complaints", label: "Complaints" },
-          { to: "/heatmap", label: "Heatmap" },
-          { to: "/contact", label: "Contact" },
-        ].map((item, i) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === "/"}
-            className={({ isActive }) =>
-              `nav-link relative block py-2 pr-4 pl-3 text-xl transition-all duration-300 hover:text-orange-500 dark:text-white ${
-                isActive
-                  ? "active font-semibold text-blue-600 dark:text-yellow-300"
-                  : ""
-              }`
-            }
-            ref={(el) => (linksRef.current[i] = el)}
-          >
-            {item.label}
-          </NavLink>
-        ))}
+                        {/* Collapsible Menu */}
+            <NavbarCollapse className="relative">
+                {[
+                    { to: "/", label: "Home" },
+                    { to: "/complaints", label: "Complaints" },
+                    { to: "/heatmap", label: "Heatmap" },
+                    { to: "/contact", label: "Contact" },
+                ].map((item, i) => (
+                    <NavLink
+                        key={item.to}
+                        to={item.to}
+                        end={item.to === "/"}
+                        className={({ isActive }) =>
+                            `nav-link relative block py-2 pr-4 pl-3 text-xl transition-all duration-300 hover:text-orange-500 dark:text-white ${isActive
+                                ? "active font-semibold text-blue-600 dark:text-yellow-300"
+                                : ""
+                            }`
+                        }
+                        ref={(el) => (linksRef.current[i] = el)}
+                    >
+                        {item.label}
+                    </NavLink>
+                ))}
 
-        {/* GSAP Underline */}
-        <span
-          ref={underlineRef}
-          className="absolute bottom-0 h-[3px] rounded-full bg-blue-500 transition-all dark:bg-yellow-300"
-          style={{ left: 0, width: 0 }}
-        />
-      </NavbarCollapse>
-    </Navbar>
-  );
+                {/* GSAP Underline */}
+                <span
+                    ref={underlineRef}
+                    className="absolute bottom-0 h-[3px] rounded-full bg-blue-500 transition-all dark:bg-yellow-300"
+                    style={{ left: 0, width: 0 }}
+                />
+            </NavbarCollapse>
+        </Navbar>
+    );
 };
 
 export default Navigation;
