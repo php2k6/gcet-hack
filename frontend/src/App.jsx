@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Navigation from "./components/Navigation";
+
 import { ThemeProvider, createTheme } from "flowbite-react";
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './libs/react-query';
@@ -15,6 +15,9 @@ import Login from "./pages/Login";
 import ComplaintDetails from "./pages/ComplaintDetails";
 import Profile from "./pages/profile";
 import NotFound from "./pages/NotFound";
+import Navigation from "./components/Navigation";
+import Footer from "./components/Footer";
+
 
 export default function App() {
   const customTheme = createTheme({
@@ -97,6 +100,7 @@ export default function App() {
             <Route path="/complaints/:id" element={<ComplaintDetails />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Footer/>
         </Router>
       </ThemeProvider>
     </QueryClientProvider>

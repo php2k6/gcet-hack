@@ -14,6 +14,7 @@ import usericon from "../assets/user.png"
 
 import logo from "../assets/logo.svg";
 import logodark from "../assets/logo-dark.svg";
+import { useGetMe } from "../api/user";
 
 const Navigation = () => {
     const { mode } = useThemeMode();
@@ -23,6 +24,7 @@ const Navigation = () => {
     const location = useLocation();
     const isLoggedIn = Boolean(localStorage.getItem("access_token"));
 
+    const { data: userData } = useGetMe();
 
     // Move underline when route changes
     useEffect(() => {
@@ -39,6 +41,8 @@ const Navigation = () => {
     }, [location]);
     // transition border radius of navbar on scroll from 0 to 500px
     useEffect(() => {
+
+        console.log("User Data in Nav:", userData);
         const handleScroll = () => {
             const scrollY = window.scrollY;
             const maxScroll = window.innerHeight * 1;
@@ -48,6 +52,8 @@ const Navigation = () => {
                 navbarRef.current.style.borderRadius = `${borderRadius}px`;
             }
         };
+        console.log(userData);
+        
 
         window.addEventListener("scroll", handleScroll);
         return () => {
