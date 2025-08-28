@@ -30,11 +30,15 @@ backend/
 │   │   ├── __init__.py          # Router package initialization
 │   │   ├── auth.py              # Authentication endpoints (6 endpoints)
 │   │   ├── users.py             # User management endpoints (7 endpoints)
+│   │   ├── issues.py            # Issues management endpoints (5 endpoints)
+│   │   ├── authorities.py       # Authorities management endpoints (3 endpoints)
 │   │   └── chatbot.py           # Chatbot endpoints
 │   ├── schemas/                 # Pydantic models for validation
 │   │   ├── __init__.py          # Schema package initialization
 │   │   ├── auth_schemas.py      # Authentication request/response models
-│   │   └── user_schemas.py      # User management request/response models
+│   │   ├── user_schemas.py      # User management request/response models
+│   │   ├── issue_schemas.py     # Issues management request/response models
+│   │   └── authority_schemas.py # Authorities management request/response models
 │   └── services/                # Business logic services
 ├── migrations/                   # Alembic database migrations
 │   ├── env.py                   # Alembic environment configuration
@@ -44,12 +48,16 @@ backend/
 ├── tests/                       # Comprehensive test suite
 │   ├── test_auth_endpoints.py   # Authentication endpoint tests (8 tests)
 │   ├── test_user_endpoints.py   # User management endpoint tests (4 tests)
+│   ├── test_issue_endpoints.py  # Issues & media management endpoint tests (12 tests)
+│   ├── test_authority_endpoints.py # Authorities management endpoint tests (4 tests)
 │   ├── run_all_tests.py         # Test runner script
 │   ├── performance_test.py      # Load testing
 │   ├── manual_test.py           # Manual testing scripts
 │   ├── quick_test.py            # Quick validation tests
 │   ├── conftest.py              # Test configuration
 │   └── README.md                # Test documentation
+├── uploads/                     # Media file storage (organized by date)
+│   └── YYYY/MM/issues/          # Issue attachments by year/month
 ├── venv/                        # Virtual environment (created by user)
 ├── .env                         # Environment variables (create this)
 ├── .gitignore                   # Git ignore rules
@@ -97,9 +105,11 @@ python tests/run_all_tests.py
 # Or run individual test suites
 python tests/test_auth_endpoints.py    # 8/8 authentication tests
 python tests/test_user_endpoints.py   # 4/4 user management tests
+python tests/test_issue_endpoints.py  # 5/5 issues management tests
+python tests/test_authority_endpoints.py # 4/4 authorities management tests
 ```
 
-**Current Test Status: ✅ 12/12 tests passing (100%)**
+**Current Test Status: ✅ 28/28 tests passing (100%)**
 
 ---
 
@@ -654,6 +664,455 @@ Authorization: Bearer <access_token>
 }
 ```
 
+### 📋 Issues Management API
+
+All issues endpoints are prefixed with `/api/issues`. Citizens can report problems, while authorities and admins can manage them.
+
+#### **1. Create Issue**
+```http
+POST /api/issues/
+```
+
+**Description:** Create a new issue/complaint. Any authenticated user can create issues.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+```json
+{
+  "authority_id": "550e8400-e29b-41d4-a716-446655440000",
+  "title": "Pothole on Main Street",
+  "description": "Large pothole causing damage to vehicles",
+  "location": "Main Street near City Hall",
+  "category": "Road Infrastructure",
+  "priority": 2
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Issue created successfully",
+  "issue": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "user-uuid",
+    "authority_id": "authority-uuid",
+    "title": "Pothole on Main Street",
+    "description": "Large pothole causing damage to vehicles",
+    "status": 0,
+    "location": "Main Street near City Hall",
+    "created_at": "2025-08-27T12:30:45.123456",
+    "updated_at": "2025-08-27T12:30:45.123456",
+    "priority": 2,
+    "category": "Road Infrastructure",
+    "user": {
+      "id": "user-uuid",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "district": "Downtown"
+    },
+    "authority": {
+      "id": "authority-uuid",
+      "name": "Public Works Department",
+      "district": "Downtown",
+      "contact_email": "works@city.gov",
+      "contact_phone": "555-0123",
+      "category": "Infrastructure"
+    },
+    "votes": [],
+    "vote_count": 0
+  }
+}
+```
+
+#### **2. Get All Issues**
+```http
+GET /api/issues/
+```
+
+**Description:** Get paginated list of all issues with comprehensive filtering options.
+
+**Query Parameters:**
+- `district`: Filter by authority district
+- `category`: Filter by issue category
+- `status` (0-3): Filter by status (0=Open, 1=In Progress, 2=Resolved, 3=Closed)
+- `search`: Search in title and description
+- `created_after`: Issues created after date (ISO format)
+- `created_before`: Issues created before date (ISO format)
+- `limit` (1-100): Results per page (default: 10)
+- `page`: Page number (default: 1)
+- `sort_by`: Sort field (default: created_at)
+- `sort_order`: asc/desc (default: desc)
+
+**Example Request:**
+```http
+GET /api/issues/?district=Downtown&status=0&limit=20&page=1
+```
+
+**Response (200 OK):**
+```json
+{
+  "issues": [
+    {
+      "id": "issue-uuid",
+      "title": "Pothole on Main Street",
+      "description": "Large pothole causing damage",
+      "status": 0,
+      "location": "Main Street",
+      "priority": 2,
+      "category": "Road Infrastructure",
+      "created_at": "2025-08-27T12:30:45.123456",
+      "user": {"name": "John Doe", "district": "Downtown"},
+      "authority": {"name": "Public Works", "district": "Downtown"},
+      "vote_count": 5
+    }
+  ],
+  "total": 45,
+  "page": 1,
+  "limit": 20,
+  "total_pages": 3
+}
+```
+
+#### **3. Get Issue by ID**
+```http
+GET /api/issues/{issue_id}
+```
+
+**Description:** Get detailed information about a specific issue by UUID.
+
+**Response (200 OK):** Complete issue object with user, authority, and votes
+
+#### **4. Update Issue**
+```http
+PATCH /api/issues/{issue_id}
+```
+
+**Description:** Update issue details. Permissions: Admin (any issue), Authority (issues in their department), Issue creator (own issues).
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body (all fields optional):**
+```json
+{
+  "title": "Updated title",
+  "description": "Updated description",
+  "status": 1,
+  "location": "Updated location",
+  "category": "Updated category",
+  "priority": 3
+}
+```
+
+**Response (200 OK):** Updated issue object
+
+#### **5. Delete Issue**
+```http
+DELETE /api/issues/{issue_id}
+```
+
+**Description:** Delete an issue. Permissions: Admin or issue creator only.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response (204 No Content)**
+
+#### **6. Add Media to Issue**
+```http
+POST /api/issues/media/{issue_id}
+```
+
+**Description:** Upload one or more files to an existing issue. Supports images (jpg, jpeg, png, gif), videos (mp4, mov), and documents (pdf). Maximum file size: 10MB per file.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+```
+
+**Permissions:** Issue creator, assigned authority, or admin.
+
+**Request Body (Form Data):**
+```
+files: File[] (one or more files)
+```
+
+**Supported File Types:**
+- Images: `.jpg`, `.jpeg`, `.png`, `.gif`
+- Videos: `.mp4`, `.mov`
+- Documents: `.pdf`
+
+**Response (201 Created):**
+```json
+{
+  "message": "Added 2 media files to issue",
+  "uploaded_files": ["pothole_photo.jpg", "damage_report.pdf"]
+}
+```
+
+#### **7. Get Issue Media**
+```http
+GET /api/issues/media/{issue_id}
+```
+
+**Description:** Get list of all media files attached to a specific issue.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "issue_id": "issue-uuid",
+    "path": "uploads/2025/08/issues/filename.jpg",
+    "filename": "pothole_photo.jpg",
+    "file_size": 2048576,
+    "file_type": "image/jpeg",
+    "created_at": "2025-08-27T12:30:45.123456"
+  },
+  {
+    "id": "another-uuid",
+    "issue_id": "issue-uuid", 
+    "path": "uploads/2025/08/issues/filename.pdf",
+    "filename": "damage_report.pdf",
+    "file_size": 1024000,
+    "file_type": "application/pdf",
+    "created_at": "2025-08-27T12:35:22.789012"
+  }
+]
+```
+
+#### **8. Delete Media File**
+```http
+DELETE /api/issues/media/{media_id}
+```
+
+**Description:** Delete a specific media file from an issue. File is removed from both database and disk storage.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Permissions:** Issue creator, assigned authority, or admin.
+
+**Response (204 No Content)**
+
+#### **9. Download/Serve Media File**
+```http
+GET /api/issues/serve/{media_id}
+```
+
+**Description:** Download or view a media file. Returns the actual file content with appropriate headers.
+
+**Response (200 OK):**
+- Content-Type: `application/octet-stream`
+- Content-Disposition: `attachment; filename="original_filename.ext"`
+- File content as binary data
+
+**Usage Example:**
+```html
+<!-- Direct link to view/download file -->
+<a href="/api/issues/serve/550e8400-e29b-41d4-a716-446655440000" 
+   download="pothole_photo.jpg">Download Image</a>
+
+<!-- Image display -->
+<img src="/api/issues/serve/550e8400-e29b-41d4-a716-446655440000" 
+     alt="Issue Photo" />
+```
+
+#### **🌐 Frontend Integration Example - Media Upload**
+
+```javascript
+// Upload multiple files to an issue
+async function uploadMediaToIssue(issueId, files, accessToken) {
+  const formData = new FormData();
+  
+  // Add multiple files to form data
+  for (let i = 0; i < files.length; i++) {
+    formData.append('files', files[i]);
+  }
+  
+  const response = await fetch(`/api/issues/media/${issueId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: formData
+  });
+  
+  const result = await response.json();
+  console.log(result.message); // "Added 2 media files to issue"
+  return result.uploaded_files; // ["photo.jpg", "document.pdf"]
+}
+
+// Get all media for an issue
+async function getIssueMedia(issueId, accessToken) {
+  const response = await fetch(`/api/issues/media/${issueId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  });
+  
+  const mediaFiles = await response.json();
+  return mediaFiles; // Array of media objects with download URLs
+}
+
+// Create downloadable links for media files
+function createMediaLinks(mediaFiles) {
+  return mediaFiles.map(media => ({
+    id: media.id,
+    filename: media.filename,
+    downloadUrl: `/api/issues/serve/${media.id}`,
+    size: media.file_size,
+    type: media.file_type
+  }));
+}
+
+// HTML file input for multiple files
+// <input type="file" id="mediaFiles" multiple 
+//        accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.pdf">
+```
+
+#### **📁 Media Storage Details**
+- **Storage Path**: `uploads/YYYY/MM/issues/`
+- **File Naming**: UUID-based filenames to prevent conflicts
+- **Metadata**: Original filename, size, and type stored in database
+- **Security**: Access controlled by issue permissions
+- **Organization**: Files organized by upload date for better management
+
+#### **📊 Issue Status Codes**
+- `0`: Open (newly created)
+- `1`: In Progress (being worked on)
+- `2`: Resolved (work completed)
+- `3`: Closed (final state)
+
+#### **🎯 Priority Levels**
+- `1`: Low priority
+- `2`: Medium priority  
+- `3`: High priority
+- `4`: Critical/Urgent
+
+### 🏛️ Authorities Management API
+
+All authorities endpoints are prefixed with `/api/authority`. Manage government departments and agencies.
+
+#### **1. Get Authority by ID**
+```http
+GET /api/authority/{authority_id}
+```
+
+**Description:** Get detailed information about a specific authority by UUID.
+
+**Response (200 OK):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "user-uuid",
+  "name": "Public Works Department",
+  "district": "Downtown",
+  "contact_email": "works@city.gov",
+  "contact_phone": "555-0123",
+  "address": "123 City Hall Plaza",
+  "category": "Infrastructure",
+  "description": "Responsible for road maintenance and public infrastructure",
+  "created_at": "2025-08-27T12:30:45.123456",
+  "updated_at": "2025-08-27T12:30:45.123456",
+  "user": {
+    "id": "user-uuid",
+    "name": "Department Head",
+    "email": "head@works.gov",
+    "phone": "555-0124",
+    "district": "Downtown",
+    "role": 1
+  }
+}
+```
+
+#### **2. Update Authority**
+```http
+PATCH /api/authority/{authority_id}
+```
+
+**Description:** Update authority information. Permissions: Admin or the authority user themselves.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body (all fields optional):**
+```json
+{
+  "name": "Updated Department Name",
+  "contact_email": "new@email.gov",
+  "contact_phone": "555-9999",
+  "address": "New Address",
+  "category": "Updated Category",
+  "description": "Updated description of services"
+}
+```
+
+**Response (200 OK):** Updated authority object
+
+#### **3. Delete Authority**
+```http
+DELETE /api/authority/{authority_id}
+```
+
+**Description:** Delete an authority permanently. Only administrators can delete authorities.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Permissions:** Admin only (role = 2)
+
+**Response (204 No Content)**
+
+**Error Responses:**
+- `403 Forbidden`: Only administrators can delete authorities
+- `404 Not Found`: Authority not found
+- `400 Bad Request`: Cannot delete authority with associated issues
+
+**Important Notes:**
+- Only admin users can delete authorities
+- Authorities with associated issues cannot be deleted
+- The system will check for existing issues and prevent deletion if any are found
+- Issues must be reassigned to another authority or deleted before the authority can be removed
+
+**Example Error (Authority with Issues):**
+```json
+{
+  "detail": "Cannot delete authority with 15 associated issues. Please reassign or delete issues first."
+}
+```
+
+#### **🏛️ Authority Categories**
+Common authority categories include:
+- Infrastructure
+- Public Safety
+- Health Services
+- Environmental
+- Transportation
+- Utilities
+- Education
+- Parks & Recreation
+
 ### 🤖 Other Available Endpoints
 
 #### **Chatbot API**
@@ -684,8 +1143,8 @@ GET /health
 The project includes a comprehensive test suite covering all API endpoints:
 
 - **📁 Location**: `backend/tests/`
-- **🧪 Test Files**: 3 main test scripts
-- **📊 Coverage**: 12/12 tests passing (100%)
+- **🧪 Test Files**: 4 main test scripts
+- **📊 Coverage**: 28/28 tests passing (100%)
 - **🚀 Easy Running**: One-command test execution
 
 ### **Test Scripts**
@@ -700,7 +1159,17 @@ The project includes a comprehensive test suite covering all API endpoints:
 - 👤 **Endpoints**: profile management, user lookup, admin controls
 - 🎯 **Focus**: Role-based access, profile updates, admin permissions
 
-#### **3. Test Runner (`run_all_tests.py`)**
+#### **3. Issues Management Tests (`test_issue_endpoints.py`)**
+- ✅ **12 Tests**: Complete issues and media CRUD operations
+- 📋 **Endpoints**: create, read, update, delete, list with filtering, media upload/download/delete
+- 🎯 **Focus**: Issue reporting, status management, media attachments, role-based permissions
+
+#### **4. Authorities Management Tests (`test_authority_endpoints.py`)**
+- ✅ **4 Tests**: Authority management operations with delete endpoint
+- 🏛️ **Endpoints**: get by ID, update authority info, access control, delete authority (admin only)
+- 🎯 **Focus**: Authority data management, permission validation, admin-only operations
+
+#### **5. Test Runner (`run_all_tests.py`)**
 - 🎬 **Runs**: All test suites in sequence
 - 📊 **Reports**: Comprehensive test results
 - ⚡ **One Command**: Complete test execution
@@ -722,6 +1191,8 @@ python tests/run_all_tests.py
 # Run specific test suites
 python tests/test_auth_endpoints.py
 python tests/test_user_endpoints.py
+python tests/test_issue_endpoints.py
+python tests/test_authority_endpoints.py
 ```
 
 ### **Test Features**
@@ -750,8 +1221,12 @@ python tests/test_user_endpoints.py
 - **`app/models.py`**: SQLAlchemy database models (7 tables with UUID primary keys)
 - **`app/routers/auth.py`**: 6 authentication endpoints with JWT
 - **`app/routers/users.py`**: 7 user management endpoints with role-based access
+- **`app/routers/issues.py`**: 9 issues and media management endpoints with CRUD operations and file upload
+- **`app/routers/authorities.py`**: 3 authorities management endpoints with access control
 - **`app/schemas/auth_schemas.py`**: Authentication request/response models
 - **`app/schemas/user_schemas.py`**: User management request/response models
+- **`app/schemas/issue_schemas.py`**: Issues management request/response models
+- **`app/schemas/authority_schemas.py`**: Authorities management request/response models
 - **`tests/`**: Comprehensive test suite with 100% pass rate
 
 ### **Best Practices**
@@ -824,8 +1299,10 @@ pip install -r requirements.txt
 
 ✅ **Authentication System**: Complete with 6 endpoints, JWT tokens, Google OAuth  
 ✅ **User Management**: Full CRUD with role-based access control  
+✅ **Issues Management**: Complete CRUD system with 9 endpoints, filtering, pagination, and media upload  
+✅ **Authorities Management**: Complete CRUD with 3 endpoints including admin-only delete functionality  
 ✅ **Database**: PostgreSQL with UUID primary keys and proper relationships  
-✅ **Testing**: 12/12 tests passing with comprehensive coverage  
+✅ **Testing**: 28/28 tests passing with comprehensive coverage  
 ✅ **Documentation**: Complete API reference with examples  
 ✅ **Migrations**: Production-ready database schema management  
 

@@ -37,7 +37,9 @@ def main():
     
     tests = [
         ("tests/test_auth_endpoints.py", "AUTHENTICATION ENDPOINTS"),
-        ("tests/test_user_endpoints.py", "USER MANAGEMENT ENDPOINTS")
+        ("tests/test_user_endpoints.py", "USER MANAGEMENT ENDPOINTS"),
+        ("tests/test_issue_endpoints.py", "ISSUES MANAGEMENT ENDPOINTS"),
+        ("tests/test_authority_endpoints.py", "AUTHORITY MANAGEMENT ENDPOINTS")
     ]
     
     passed = 0
