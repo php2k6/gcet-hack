@@ -13,6 +13,7 @@ import { gsap } from "gsap";
 
 import logo from "../assets/logo.svg";
 import logodark from "../assets/logo-dark.svg";
+import { Bell, CheckCircle, AlertCircle } from "lucide-react";
 
 const Navigation = () => {
   const { mode } = useThemeMode();

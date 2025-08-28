@@ -10,6 +10,7 @@ import Complaints from "./pages/Complaints";
 import Heatmap from "./pages/Heatmap";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+import Notification from "./pages/Notification";
 
 export default function App() {
   const customTheme = createTheme({
@@ -89,6 +90,7 @@ export default function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/login" element={<Login />} />
             <Route path="/report" element={<Report />} />
+            <Route path="/notification" element={<Notification />} />
           </Routes>
         </Router>
       </ThemeProvider>
