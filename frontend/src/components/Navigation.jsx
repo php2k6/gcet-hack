@@ -21,6 +21,8 @@ const Navigation = () => {
   const navbarRef = useRef([]);
   const location = useLocation();
 
+  var hasnoti = true;
+
   // Move underline when route changes
   useEffect(() => {
     const activeLink = document.querySelector(".nav-link.active");
@@ -88,6 +90,40 @@ const Navigation = () => {
 
       {/* Right side */}
       <div className="flex items-center space-x-2 md:order-2">
+        <div className="group relative inline-block">
+          <a href="/notification">
+            <svg
+              className="h-6 w-6 cursor-pointer text-gray-800 hover:text-orange-500 dark:text-white dark:hover:text-orange-500"
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 16 21"
+            >
+              <path
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M8 3.464V1.1m0 2.365a5.338 5.338 0 0 1 5.133 5.368v1.8c0 2.386 1.867 2.982 1.867 4.175C15 15.4 15 16 14.462 16H1.538C1 16 1 15.4 1 14.807c0-1.193 1.867-1.789 1.867-4.175v-1.8A5.338 5.338 0 0 1 8 3.464ZM4.54 16a3.48 3.48 0 0 0 6.92 0H4.54Z"
+              />
+            </svg>
+            {hasnoti && (
+              <span className="absolute right-0 bottom-0 h-2 w-2 rounded-full border-2 border-white bg-red-500"></span>
+            )}
+
+            {hasnoti && (
+              <span className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black px-2 py-1 text-xs whitespace-nowrap text-white group-hover:block dark:bg-white dark:text-black">
+                Click to see the notifications
+              </span>
+            )}
+
+            {!hasnoti && (
+              <span className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black px-2 py-1 text-xs whitespace-nowrap text-white group-hover:block dark:bg-white dark:text-black">
+                No new notification
+              </span>
+            )}
+          </a>
+        </div>
         <Button
           as={NavLink}
           to="/signup"
