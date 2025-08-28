@@ -4,6 +4,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 const NewIssue = () => {
   const [previewFiles, setPreviewFiles] = useState([]);
+  const [loadingLocation, setLoadingLocation] = useState(false);
 
   const formik = useFormik({
     initialValues: {
@@ -33,6 +34,27 @@ const NewIssue = () => {
       type: f.type,
     }));
     setPreviewFiles(prev);
+  };
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLoadingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const locationStr = `Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`;
+        formik.setFieldValue("location", locationStr);
+        setLoadingLocation(false);
+      },
+      (error) => {
+        console.error(error);
+        alert("Unable to fetch location.");
+        setLoadingLocation(false);
+      },
+    );
   };
   return (
     <>
@@ -89,18 +111,30 @@ const NewIssue = () => {
 
               {/* Location */}
               <div className="mb-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  name="location"
-                  placeholder="Enter location"
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  value={formik.values.location}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-1 transition outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                />
+                {/* <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Add Location Manually
+                </label> */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold whitespace-nowrap text-white transition hover:bg-indigo-600"
+                  >
+                    {loadingLocation ? "Fetching..." : "Get Location"}
+                  </button>
+                  <label className="mt-2 block text-sm font-medium text-slate-700">
+                    or
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    placeholder="Enter location manually"
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    value={formik.values.location}
+                    className="flex-1 rounded-xl border border-slate-300 px-4 py-1 transition outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  />
+                </div>
                 {formik.touched.location && formik.errors.location ? (
                   <p className="text-xs text-red-500">
                     {formik.errors.location}
@@ -117,6 +151,7 @@ const NewIssue = () => {
                   name="media"
                   accept="image/*,video/*"
                   multiple
+                  capture="environment" // <-- allows camera access on mobile
                   onChange={files}
                   className="block w-full cursor-pointer rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm outline-none file:mr-4 file:rounded-xl file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-600"
                 />
@@ -127,7 +162,7 @@ const NewIssue = () => {
                         <img
                           src={file.url}
                           alt={file.name}
-                          className="h-15 w-15 rounded-lg object-cover"
+                          className="h-20 w-20 rounded-lg object-cover"
                         />
                       ) : (
                         <video
