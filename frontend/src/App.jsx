@@ -10,6 +10,7 @@ import Complaints from "./pages/Complaints";
 import Heatmap from "./pages/Heatmap";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+import NewIssue from "./pages/NewIssue";
 import Notification from "./pages/Notification";
 
 export default function App() {
@@ -91,6 +92,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/report" element={<Report />} />
             <Route path="/notification" element={<Notification />} />
+            <Route path="/newissue" element={<NewIssue />} />
           </Routes>
         </Router>
       </ThemeProvider>
