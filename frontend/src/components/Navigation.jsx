@@ -128,8 +128,9 @@ const Navigation = () => {
         <Button
           as={NavLink}
           to="/signup"
-          className="primary-btn text-xl"
           color="primary"
+          className="primary-btn text-white hover:text-black dark:bg-orange-500 dark:text-black dark:text-white dark:hover:bg-orange-500 dark:hover:text-black"
+          // className="rounded-lg px-4 py-2 hover:bg-blue-700 hover:text-yellow-300"
         >
           Signup
         </Button>
