@@ -67,7 +67,6 @@ const NewIssue = () => {
                 ) : null}
               </div>
 
-              {/* Description */}
               <div className="mb-2">
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Description
@@ -109,7 +108,6 @@ const NewIssue = () => {
                 ) : null}
               </div>
 
-              {/* Media Upload */}
               <div className="mb-2">
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Upload Media (optional)
@@ -143,10 +141,9 @@ const NewIssue = () => {
                 </div>
               </div>
 
-              {/* Submit */}
               <button
                 type="submit"
-                className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 py-3 font-semibold text-white transition hover:shadow-lg"
+                className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 py-3 font-semibold text-white transition hover:text-black hover:shadow-lg"
               >
                 Submit Issue
               </button>
