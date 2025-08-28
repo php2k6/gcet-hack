@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCET Hack - Auth Test</title>
+    
+    <!-- Google Sign-In Library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .error-message {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+            border-left: 4px solid #d32f2f;
+        }
+        
+        .success-message {
+            color: #388e3c;
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+            border-left: 4px solid #388e3c;
+        }
+        
+        .user-info {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #1976d2;
+        }
+        
+        #user-section {
+            display: none;
+        }
+        
+        .auth-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .form-group {
+            margin: 15px 0;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        button {
+            background: #1976d2;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px 10px 0;
+        }
+        
+        button:hover {
+            background: #1565c0;
+        }
+        
+        .google-btn {
+            background: #db4437;
+        }
+        
+        .google-btn:hover {
+            background: #c23321;
+        }
+        
+        .logout-btn {
+            background: #f44336;
+        }
+        
+        .logout-btn:hover {
+            background: #d32f2f;
+        }
+        
+        .test-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .api-test {
+            margin: 10px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-success {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .status-error {
+            background: #f44336;
+            color: white;
+        }
+        
+        .status-pending {
+            background: #ff9800;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 GCET Hack - Authentication Test</h1>
+        <p>Test Google Auth and regular login functionality with the backend API</p>
+    </div>
+
+    <!-- Error/Success Messages -->
+    <div id="error-message" class="error-message"></div>
+    <div id="success-message" class="success-message"></div>
+
+    <!-- Login Section -->
+    <div id="login-section" class="container">
+        <h2>🔐 Authentication Options</h2>
+        
+        <!-- Google Sign-In -->
+        <div class="auth-section">
+            <h3>Google Sign-In</h3>
+            <p>Click below to sign in with your Google account:</p>
+            
+            <!-- Google One Tap -->
+            <div id="g_id_onload"
+                 data-client_id="233711984336-lmlqdbhcc7uksgusqchb4envpb6224f8.apps.googleusercontent.com"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+            
+            <!-- Google Button -->
+            <div class="g_id_signin" 
+                 data-type="standard" 
+                 data-size="large" 
+                 data-theme="outline" 
+                 data-text="sign_in_with" 
+                 data-shape="rectangular" 
+                 data-logo_alignment="left">
+            </div>
+            
+            <br><br>
+            <button onclick="signInWithGoogle()" class="google-btn">
+                🔍 Trigger Google Sign-In Manually
+            </button>
+        </div>
+        
+        <!-- Regular Login -->
+        <div class="auth-section">
+            <h3>Email/Password Login</h3>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <div class="form-group">
+                    <label for="role">Role:</label>
+                    <select id="role">
+                        <option value="0">Citizen</option>
+                        <option value="1">Authority</option>
+                        <option value="2">Admin</option>
+                    </select>
+                </div>
+                <button type="submit">🔑 Sign In</button>
+            </form>
+        </div>
+
+        <!-- Signup -->
+        <div class="auth-section">
+            <h3>Create New Account</h3>
+            <form id="signup-form">
+                <div class="form-group">
+                    <label for="signup-name">Name:</label>
+                    <input type="text" id="signup-name" placeholder="Your full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-email">Email:</label>
+                    <input type="email" id="signup-email" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password:</label>
+                    <input type="password" id="signup-password" placeholder="Create a password" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-phone">Phone:</label>
+                    <input type="tel" id="signup-phone" placeholder="Your phone number" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-district">District:</label>
+                    <input type="text" id="signup-district" placeholder="Your district" required>
+                </div>
+                <button type="submit">📝 Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Dashboard -->
+    <div id="user-section" class="container">
+        <h2>👋 Welcome!</h2>
+        <div class="user-info">
+            <h3>User Information</h3>
+            <p><strong>Name:</strong> <span id="user-name"></span></p>
+            <p><strong>Email:</strong> <span id="user-email"></span></p>
+            <p><strong>Role:</strong> <span id="user-role"></span></p>
+            <p><strong>District:</strong> <span id="user-district"></span></p>
+            <p><strong>Google User:</strong> <span id="user-google"></span></p>
+            <p><strong>User ID:</strong> <span id="user-id"></span></p>
+        </div>
+        
+        <button onclick="logout()" class="logout-btn">🚪 Logout</button>
+        <button onclick="refreshToken()">🔄 Refresh Token</button>
+        <button onclick="testAPICall()">🧪 Test API Call</button>
+    </div>
+
+    <!-- API Testing Section -->
+    <div id="test-section" class="container test-section">
+        <h2>🧪 API Testing Dashboard</h2>
+        <p>Test various API endpoints with your current authentication:</p>
+        
+        <div class="api-test">
+            <h4>Auth Endpoints <span id="auth-status" class="status-indicator status-pending">Not Tested</span></h4>
+            <button onclick="testCurrentUser()">Test GET /auth/me</button>
+            <button onclick="testRefreshToken()">Test POST /auth/refresh-token</button>
+            <pre id="auth-response">Response will appear here...</pre>
+        </div>
+        
+        <div class="api-test">
+            <h4>Issues Endpoints <span id="issues-status" class="status-indicator status-pending">Not Tested</span></h4>
+            <button onclick="testGetIssues()">Test GET /issues</button>
+            <button onclick="testCreateIssue()">Test POST /issues</button>
+            <pre id="issues-response">Response will appear here...</pre>
+        </div>
+        
+        <div class="api-test">
+            <h4>User Endpoints <span id="user-status" class="status-indicator status-pending">Not Tested</span></h4>
+            <button onclick="testUserProfile()">Test GET /user/me</button>
+            <pre id="user-response">Response will appear here...</pre>
+        </div>
+        
+        <div class="api-test">
+            <h4>Authority Endpoints <span id="authority-status" class="status-indicator status-pending">Not Tested</span></h4>
+            <button onclick="testAuthorities()">Test Authority Endpoints</button>
+            <pre id="authority-response">Response will appear here...</pre>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+</body>
+</html>
