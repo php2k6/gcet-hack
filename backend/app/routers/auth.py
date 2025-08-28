@@ -5,6 +5,10 @@ import uuid
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from app.database import get_db
 from app.models import User
@@ -141,17 +145,47 @@ def google_auth(
         # You'll need to set GOOGLE_CLIENT_ID in your environment
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
         if not GOOGLE_CLIENT_ID:
+            print("❌ GOOGLE_CLIENT_ID not found in environment")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Google authentication not configured"
             )
         
-        # Verify the token
-        idinfo = id_token.verify_oauth2_token(
-            google_data.id_token, 
-            requests.Request(), 
-            GOOGLE_CLIENT_ID
-        )
+        print(f"🔍 Using Google Client ID: {GOOGLE_CLIENT_ID}")
+        print(f"🔍 Received ID token length: {len(google_data.id_token)}")
+        
+        # Verify the token with clock skew tolerance
+        import time
+        current_time = int(time.time())
+        print(f"⏰ Current server time: {current_time}")
+        
+        # Create request object for token verification
+        request_obj = requests.Request()
+        
+        try:
+            # Try with clock skew tolerance first
+            idinfo = id_token.verify_oauth2_token(
+                google_data.id_token, 
+                request_obj, 
+                GOOGLE_CLIENT_ID,
+                clock_skew_in_seconds=60  # Allow 60 seconds of clock skew
+            )
+        except ValueError as e:
+            if "used too early" in str(e) or "clock" in str(e).lower():
+                print(f"🕒 Clock skew detected: {str(e)}")
+                print(f"⏰ Retrying with extended tolerance...")
+                # Try with extended tolerance
+                idinfo = id_token.verify_oauth2_token(
+                    google_data.id_token, 
+                    request_obj, 
+                    GOOGLE_CLIENT_ID,
+                    clock_skew_in_seconds=120  # Allow 2 minutes of clock skew
+                )
+            else:
+                raise e
+        
+        print(f"✅ Token verified successfully")
+        print(f"📧 Email from token: {idinfo.get('email')}")
         
         # Get user info from Google
         google_id = idinfo['sub']  # Google's unique user ID
@@ -166,6 +200,7 @@ def google_auth(
         
         if user:
             # Existing user found
+            print(f"👤 Found existing user: {user.email}")
             if user.is_google:
                 # User already has Google auth - allow login
                 if not user.google_id:
@@ -178,6 +213,7 @@ def google_auth(
                 db.commit()
         else:
             # New user - create with Google auth
+            print(f"➕ Creating new user: {email}")
             user = User(
                 id=uuid.uuid4(),
                 name=name,
@@ -200,6 +236,8 @@ def google_auth(
         # Convert user to UserResponse schema
         user_response = create_user_response(user)
         
+        print(f"✅ Google auth successful for: {user.email}")
+        
         return GoogleAuthResponse(
             access_token=access_token,
             token_type="bearer",
@@ -208,14 +246,17 @@ def google_auth(
         
     except ValueError as e:
         # Invalid token
+        print(f"❌ Google token validation error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Google token"
+            detail=f"Invalid Google token: {str(e)}"
         )
     except Exception as e:
+        print(f"❌ Google auth general error: {str(e)}")
+        print(f"❌ Error type: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google authentication failed"
+            detail=f"Google authentication failed: {str(e)}"
         )
 
 @router.post("/logout", response_model=LogoutResponse)
@@ -261,3 +302,15 @@ def refresh_token(request: RefreshTokenRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
         )
+
+@router.get("/google-config")
+def get_google_config():
+    """Get Google authentication configuration status"""
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+    
+    return {
+        "google_auth_configured": bool(GOOGLE_CLIENT_ID),
+        "client_id_present": bool(GOOGLE_CLIENT_ID),
+        "client_id_length": len(GOOGLE_CLIENT_ID) if GOOGLE_CLIENT_ID else 0,
+        "client_id_preview": GOOGLE_CLIENT_ID[:20] + "..." if GOOGLE_CLIENT_ID and len(GOOGLE_CLIENT_ID) > 20 else GOOGLE_CLIENT_ID
+    }

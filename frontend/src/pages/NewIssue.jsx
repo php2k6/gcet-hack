@@ -1,10 +1,45 @@
 import React from "react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 const NewIssue = () => {
   const [previewFiles, setPreviewFiles] = useState([]);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const [loadingMedia, setLoadingMedia] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  const getCameraAccess = async () => {
+    setLoadingMedia(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      console.log("Camera accessed");
+      // Optionally, display a preview or capture image here.
+      stream.getTracks().forEach((track) => track.stop());
+    } catch (error) {
+      console.error("Error accessing camera", error);
+    }
+    setLoadingMedia(false);
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video && canvas) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const photo = canvas.toDataURL("image/png");
+      setCapturedPhoto(photo);
+      // Stop the video stream
+      const stream = video.srcObject;
+      stream.getTracks().forEach((track) => track.stop());
+      setShowVideo(false);
+    }
+  };
 
   const formik = useFormik({
     initialValues: {
@@ -146,34 +181,76 @@ const NewIssue = () => {
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Upload Media (optional)
                 </label>
-                <input
-                  type="file"
-                  name="media"
-                  accept="image/*,video/*"
-                  multiple
-                  capture="environment" // <-- allows camera access on mobile
-                  onChange={files}
-                  className="block w-full cursor-pointer rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm outline-none file:mr-4 file:rounded-xl file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-600"
-                />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {previewFiles.map((file, i) => (
-                    <div key={i} className="relative">
-                      {file.type.startsWith("image") ? (
-                        <img
-                          src={file.url}
-                          alt={file.name}
-                          className="h-20 w-20 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <video
-                          src={file.url}
-                          className="h-20 w-28 rounded-lg object-cover"
-                          controls
-                        />
+                <div className="flex">
+                  <div className="mt-2 mr-2">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={getCameraAccess}
+                        className="rounded-xl bg-green-500 bg-indigo-500 px-4 py-2 text-sm font-semibold whitespace-nowrap text-white transition hover:bg-green-600 hover:bg-indigo-600"
+                      >
+                        {loadingMedia ? "Accessing Camera..." : "Access Camera"}
+                      </button>
+                      {showVideo && (
+                        <button
+                          type="button"
+                          onClick={capturePhoto}
+                          className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-semibold whitespace-nowrap text-white transition hover:bg-blue-600"
+                        >
+                          Capture Photo
+                        </button>
                       )}
                     </div>
-                  ))}
+                  </div>
+                  <input
+                    type="file"
+                    name="media"
+                    accept="image/*,video/*"
+                    multiple
+                    capture="environment"
+                    onChange={files}
+                    className="block w-full cursor-pointer rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm outline-none file:mr-4 file:rounded-xl file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-600"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {previewFiles.map((file, i) => (
+                      <div key={i} className="relative">
+                        {file.type.startsWith("image") ? (
+                          <img
+                            src={file.url}
+                            alt={file.name}
+                            className="h-20 w-20 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <video
+                            src={file.url}
+                            className="h-20 w-28 rounded-lg object-cover"
+                            controls
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
+                {showVideo && (
+                  <div className="mt-2">
+                    <video
+                      ref={videoRef}
+                      className="w-full max-w-xs"
+                      autoPlay
+                    />
+                    <canvas ref={canvasRef} style={{ display: "none" }} />
+                  </div>
+                )}
+
+                {capturedPhoto && (
+                  <div className="mt-2">
+                    <img
+                      src={capturedPhoto}
+                      alt="Captured"
+                      className="w-full max-w-xs"
+                    />
+                  </div>
+                )}
               </div>
 
               <button
