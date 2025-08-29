@@ -1,6 +1,6 @@
 
 // src/api/votes.js
-import apiClient from '../lib/axios';
+import apiClient from '../libs/axios';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Votes API functions

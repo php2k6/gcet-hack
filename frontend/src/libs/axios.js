@@ -2,8 +2,8 @@
 // src/lib/axios.js
 import axios from 'axios';
 
-// For Vite projects, use import.meta.env; for Create React App, use process.env
-const API_BASE_URL = import.meta.env.REACT_APP_API_BASE_URL;
+// For Vite projects, use import.meta.env with VITE_ prefix
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/';
 
 // Create axios instance
 const apiClient = axios.create({
@@ -36,7 +36,7 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
       // Redirect to login page
-      window.location.href = '/login';
+      // window.location.href = '/login';
     }
     return Promise.reject(error);
   }

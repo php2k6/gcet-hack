@@ -1,156 +1,277 @@
-import React from "react";
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
-import { useGoogleLogin } from "@react-oauth/google";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 
-const Signup = () => {
-  const [flipped, setFlipped] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
-  const login = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        // Fetch user profile info from Google API
-        const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-          headers: {
-            Authorization: `Bearer ${tokenResponse.access_token}`,
-          },
-        });
-        const profile = await res.json();
-        // profile.picture contains the user's profile photo URL
-        // console.log("Profile:", profile);
-        localStorage.setItem("access_token", tokenResponse.access_token);
-        localStorage.setItem("profile_photo", profile.picture);
-        navigate("/");
-      } catch (error) {
-        console.error("Failed to fetch user profile:", error);
-      }
-    },
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
+export default function SignupPage() {
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+    district: ""
   });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
+
+  // Handle Google Sign-In Success
+  const handleGoogleSignup = async (credentialResponse) => {
+    console.log('🔍 Google Sign-In response received for signup');
+    setMessage({ type: "", text: "" });
+
+    try {
+      const backendResponse = await fetch(`${API_BASE_URL}/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id_token: credentialResponse.credential
+        })
+      });
+
+      const data = await backendResponse.json();
+
+      if (backendResponse.ok) {
+        console.log('✅ Google signup successful:', data);
+
+        // fetch google profile photo 
+        
+        // Store tokens
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('refresh_token', data.refresh_token);
+        localStorage.setItem('user_data', JSON.stringify(data.user));
+        localStorage.setItem("user_img", data.user);
+
+        setMessage({
+          type: "success",
+          text: `Welcome ${data.user.name}! Google signup successful. You are now logged in.`
+        });
+        
+      } else {
+        console.error('❌ Google signup failed:', data);
+        setMessage({
+          type: "error",
+          text: "Google signup failed."
+        });
+      }
+    } catch (error) {
+      console.error('❌ Network error during Google signup:', error);
+      setMessage({
+        type: "error",
+        text: `Network error during Google signup: ${error.message}`
+      });
+    }
+  };
+
+  // Handle Google Sign-In Error
+  const handleGoogleError = () => {
+    console.error('Google Sign-In failed');
+    setMessage({
+      type: "error",
+      text: "Google Sign-In failed. Please try again."
+    });
+  };
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.id]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage({
+          type: "success",
+          text: `Account created successfully for ${data.user.name}. Please login now.`
+        });
+        setForm({ name: "", email: "", password: "", phone: "", district: "" });
+      } else {
+        setMessage({
+          type: "error",
+          text: data.detail || "Signup failed."
+        });
+      }
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text: `Network error: ${err.message}`
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <>
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-tr from-indigo-500 via-violet-500 to-pink-500 p-5">
-        <div className="perspective relative min-h-[680px] w-[420px]">
-          <div
-            className={`transform-style-preserve-3d relative min-h-[680px] w-full transition-transform duration-700 ${
-              flipped ? "rotate-y-180" : ""
-            }`}
-          >
-            <form action="#">
-              <div className="absolute mt-20 flex min-h-[600px] w-full flex-col justify-start rounded-2xl border border-white/30 bg-white/90 p-8 shadow-2xl backdrop-blur-xl backface-hidden">
-                <div className="mb-6 text-center">
-                  <h1 className="bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-3xl font-bold text-transparent">
-                    Create Account
-                  </h1>
-                </div>
+    <div className="max-w-md mx-auto bg-white shadow-md rounded-lg p-6 mt-20">
+      <h2 className="text-2xl font-bold mb-4">📝 Create New Account</h2>
 
-                <div className="mb-4 flex gap-3">
-                  <button
-                    onClick={() => login()}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 transition hover:border-indigo-500 hover:shadow-md"
-                  >
-                    <span>
-                      {" "}
-                      <svg
-                        className="social-icon mt-0 mr-2 inline h-4 w-4 pt-0"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                      </svg>
-                      Google
-                    </span>
-                  </button>
-                </div>
-
-                <div className="relative my-4 text-center text-sm text-slate-400">
-                  <span className="bg-white-100/0 relative z-10 px-4">
-                    or sign up with email
-                  </span>
-                  <div className="absolute top-1/2 left-0 -z-0 h-px w-full bg-slate-200"></div>
-                </div>
-
-                {/* Name */}
-                <div className="mb-3 flex gap-3">
-                  <div className="flex-1">
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Prabhav"
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 transition outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Patel"
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 transition outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    />
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="mb-3">
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="php@gcet.com"
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 transition outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  />
-                </div>
-
-                {/* Password */}
-                <div className="relative mb-4">
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Password
-                  </label>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 transition outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  />
-                  <button
-                    type="button"
-                    className="absolute top-10 right-3 text-slate-400 hover:text-indigo-500"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-
-                <button className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 py-3 font-semibold text-white transition hover:shadow-lg">
-                  Create Account
-                </button>
-
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-slate-600">
-                    Already have an account?{" "}
-                    <span
-                      className="cursor-pointer font-semibold text-indigo-500 hover:underline"
-                      onClick={() => setFlipped(true)}
-                    >
-                      <a href="/login">Sign in</a>
-                    </span>
-                  </p>
-                </div>
-              </div>
-            </form>
-          </div>
+      {message.text && (
+        <div
+          className={`mb-4 p-3 rounded ${
+            message.type === "success"
+              ? "bg-green-100 text-green-700 border-l-4 border-green-500"
+              : "bg-red-100 text-red-700 border-l-4 border-red-500"
+          }`}
+        >
+          {message.text}
         </div>
-      </div>
-    </>
-  );
-};
+      )}
 
-export default Signup;
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="name" className="block font-medium">
+            Name:
+          </label>
+          <input
+            id="name"
+            type="text"
+            value={form.name}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="email" className="block font-medium">
+            Email:
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="password" className="block font-medium">
+            Password:
+          </label>
+          <input
+            id="password"
+            type="password"
+            value={form.password}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="phone" className="block font-medium">
+            Phone:
+          </label>
+          <input
+            id="phone"
+            type="tel"
+            value={form.phone}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="district" className="block font-medium">
+            District:
+          </label>
+          <select
+            id="district"
+            value={form.district}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Select District</option>
+            <option value="Ahmedabad">Ahmedabad</option>
+            <option value="Surat">Surat</option>
+            <option value="Vadodara">Vadodara</option>
+            <option value="Rajkot">Rajkot</option>
+            <option value="Bhavnagar">Bhavnagar</option>
+            <option value="Jamnagar">Jamnagar</option>
+            <option value="Gandhinagar">Gandhinagar</option>
+            <option value="Anand">Anand</option>
+            <option value="Mehsana">Mehsana</option>
+            <option value="Patan">Patan</option>
+            <option value="Banaskantha">Banaskantha</option>
+            <option value="Sabarkantha">Sabarkantha</option>
+            <option value="Aravalli">Aravalli</option>
+            <option value="Kheda">Kheda</option>
+            <option value="Panchmahals">Panchmahals</option>
+            <option value="Dahod">Dahod</option>
+            <option value="Mahisagar">Mahisagar</option>
+            <option value="Bharuch">Bharuch</option>
+            <option value="Narmada">Narmada</option>
+            <option value="Navsari">Navsari</option>
+            <option value="Valsad">Valsad</option>
+            <option value="Dang">Dang</option>
+            <option value="Tapi">Tapi</option>
+            <option value="Kachchh">Kachchh</option>
+            <option value="Morbi">Morbi</option>
+            <option value="Surendranagar">Surendranagar</option>
+            <option value="Botad">Botad</option>
+            <option value="Amreli">Amreli</option>
+            <option value="Junagadh">Junagadh</option>
+            <option value="Porbandar">Porbandar</option>
+            <option value="Devbhoomi Dwarka">Devbhoomi Dwarka</option>
+            <option value="Gir Somnath">Gir Somnath</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "Creating Account..." : "Create Account"}
+        </button>
+      </form>
+
+      {/* Divider */}
+      <div className="my-6 flex items-center">
+        <div className="flex-1 border-t border-gray-300"></div>
+        <span className="px-3 text-gray-500 text-sm">or</span>
+        <div className="flex-1 border-t border-gray-300"></div>
+      </div>
+
+      {/* Google Sign-Up Button */}
+      <div className="mb-6">
+        <GoogleLogin
+          onSuccess={handleGoogleSignup}
+          onError={handleGoogleError}
+          theme="outline"
+          shape="rectangular"
+          size="large"
+          text="signup_with"
+          width="100%"
+          use_fedcm_for_prompt={false}
+        />
+      </div>
+
+      {/* Login Link */}
+      <div className="mt-6 text-center">
+        <p className="text-gray-600">
+          Already have an account?{" "}
+          <a href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
+            Sign in here
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}

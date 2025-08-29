@@ -1,10 +1,44 @@
 import React from 'react'
-
+import { useGetMe } from '../api/user';
 const Profile = () => {
     const accessToken = localStorage.getItem("access_token");
     const profilePhoto = localStorage.getItem("profile_photo");
 
-    // get user details for google auth
+    // get user details from usegetme hook
+    const { data: user, isLoading } = useGetMe();
+    const createdAt = user?.created_at;
+    const district = user?.district;
+    const email = user?.email;
+    const googleId = user?.google_id;
+    const id = user?.id;
+    const isGoogle = user?.is_google;
+    const name = user?.name;
+    const phone = user?.phone;
+    const role = user?.role;
+
+// ""
+// email
+// : 
+// "thakurhitansh4325@gmail.com"
+// google_id
+// : 
+// "109061682985649239604"
+// id
+// : 
+// "c90c389d-0f37-4bb2-89aa-2f29b91c8672"
+// is_google
+// : 
+// true
+// name
+// : 
+// "Hitansh Thakur"
+// phone
+// : 
+// ""
+// role
+// : 
+// 0
+    console.log(user);
 
     return (
         <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-8">
@@ -19,7 +53,7 @@ const Profile = () => {
                             </div>
                             <dl className="">
                                 <dt className="font-semibold text-gray-900 dark:text-white">Email Address</dt>
-                                <dd className="text-gray-500 dark:text-gray-400">helene@example.com</dd>
+                                <dd className="text-gray-500 dark:text-gray-400">{email}</dd>
                             </dl>
                             <dl>
                                 <dt className="font-semibold text-gray-900 dark:text-white">Home Address</dt>

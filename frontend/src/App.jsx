@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 import { ThemeProvider, createTheme } from "flowbite-react";
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -17,6 +18,9 @@ import Profile from "./pages/profile";
 import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
+import Notification from "./pages/Notification";
+
+const GOOGLE_CLIENT_ID = "233711984336-lmlqdbhcc7uksgusqchb4envpb6224f8.apps.googleusercontent.com";
 
 
 export default function App() {
@@ -80,29 +84,32 @@ export default function App() {
   });
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={customTheme} defaultTheme="system" enableSystem>
-        <Router>
-          {/* Navbar always visible */}
-          <Navigation />
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={customTheme} defaultTheme="system" enableSystem>
+          <Router>
+            {/* Navbar always visible */}
+            <Navigation />
 
-          {/* Declarative routing */}
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/heatmap" element={<Heatmap />} />
-            <Route path="/complaints" element={<Complaints />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/report" element={<Report />} />
-            <Route path="/profile" element={<Profile />} />
-            {/* <Route path="/complaints/new" element={<NewComplaint />} /> */}
-            <Route path="/complaints/:id" element={<ComplaintDetails />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Footer/>
-        </Router>
-      </ThemeProvider>
-    </QueryClientProvider>
+            {/* Declarative routing */}
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/heatmap" element={<Heatmap />} />
+              <Route path="/complaints" element={<Complaints />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/report" element={<Report />} />
+              <Route path="/profile" element={<Profile />} />
+              {/* <Route path="/complaints/new" element={<NewComplaint />} /> */}
+              <Route path="/notifications" element={<Notification />} />
+              <Route path="/complaints/:id" element={<ComplaintDetails />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <Footer/>
+          </Router>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </GoogleOAuthProvider>
   );
 }

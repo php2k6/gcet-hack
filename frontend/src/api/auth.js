@@ -1,6 +1,7 @@
 // src/api/auth.js
-import apiClient from "../lib/axios";
+import apiClient from "../libs/axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useGoogleOneTapLogin } from "@react-oauth/google";
 
 // Auth API functions
 export const authAPI = {
@@ -16,6 +17,7 @@ export const authAPI = {
 
   googleAuth: async (data) => {
     const response = await apiClient.post("/auth/google", data);
+    console.log("Google auth successful data from backend:", response.data);
     return response.data;
   },
 
@@ -58,6 +60,37 @@ export const useLogin = () => {
   });
 };
 
+
+
+export const useGoogleButtonAuth = (type = "login") => {
+  const googleAuthMutation = useGoogleAuth();
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    console.log("🔍 Google button login success:", credentialResponse);
+
+    try {
+      await googleAuthMutation.mutateAsync({
+        id_token: credentialResponse.credential,
+        type: type,
+      });
+    } catch (error) {
+      console.error(`❌ Google button ${type} error:`, error);
+    }
+  };
+
+  const handleGoogleError = () => {
+    console.log("Google button login failed");
+    const action = type === "signup" ? "Sign up" : "Sign in";
+    alert(`Google ${action} failed. Please try again.`);
+  };
+
+  return {
+    handleGoogleSuccess,
+    handleGoogleError,
+    isLoading: googleAuthMutation.isPending,
+  };
+};
+
 export const useGoogleAuth = () => {
   const queryClient = useQueryClient();
 
@@ -66,6 +99,8 @@ export const useGoogleAuth = () => {
     onSuccess: (data) => {
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("user_data", JSON.stringify(data.user)); // Additional storage for compatibility
+      console.log("Google auth successful:", data.user);
       queryClient.setQueryData(["user"], data.user);
     },
     onError: (error) => {

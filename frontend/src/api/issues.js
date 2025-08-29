@@ -51,6 +51,9 @@ export const useGetAllIssues = (params = {}) => {
   });
 };
 
+// eg: get all issues /issues
+
+
 export const useGetIssueById = (issueId) => {
   return useQuery({
     queryKey: ['issues', issueId],

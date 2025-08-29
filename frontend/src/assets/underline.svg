@@ -1,0 +1,25 @@
+<svg
+    className="w-72 h-8"
+    viewBox="0 0 364 42"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+>
+    <path
+        d="M3.29883 12.5608C40.3622 7.71879 150.345 -0.512646 293.767 5.29778"
+        stroke="#003049"
+        strokeWidth="3"
+        strokeLinecap="round"
+    />
+    <path
+        d="M83.6328 26.7461C109.974 21.2674 188.805 9.36813 293.394 5.6007"
+        stroke="#003049"
+        strokeWidth="3"
+        strokeLinecap="round"
+    />
+    <path
+        d="M84.5049 26.6464C120.138 23.9973 225.229 21.9629 360.525 35.0185"
+        stroke="#003049"
+        strokeWidth="3"
+        strokeLinecap="round"
+    />
+</svg>

@@ -8,7 +8,7 @@ import {
     NavbarToggle,
     useThemeMode,
 } from "flowbite-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Link,NavLink, useLocation } from "react-router-dom";
 import { gsap } from "gsap";
 import usericon from "../assets/user.png"
 
@@ -22,6 +22,8 @@ const Navigation = () => {
   const linksRef = useRef([]);
   const navbarRef = useRef([]);
   const location = useLocation();
+  const loggedIn = localStorage.getItem("loggedIn") === "true";
+  // 
 
   var hasnoti = true;
 
@@ -41,7 +43,7 @@ const Navigation = () => {
     // transition border radius of navbar on scroll from 0 to 500px
     useEffect(() => {
 
-        console.log("User Data in Nav:", userData);
+        // console.log("User Data in Nav:", userData);
         const handleScroll = () => {
             const scrollY = window.scrollY;
             const maxScroll = window.innerHeight * 1;
@@ -51,7 +53,7 @@ const Navigation = () => {
                 navbarRef.current.style.borderRadius = `${borderRadius}px`;
             }
         };
-        console.log(userData);
+        // console.log(userData);
         
 
         window.addEventListener("scroll", handleScroll);
@@ -97,7 +99,9 @@ const Navigation = () => {
       {/* Right side */}
       <div className="flex items-center space-x-2 md:order-2">
         <div className="group relative inline-block">
-          <a href="/notification">
+          
+          <Link to={"/notifications"} className="relative">
+            {/* Bell Icon */}
             <svg
               className="h-6 w-6 cursor-pointer text-gray-800 hover:text-orange-500 dark:text-white dark:hover:text-orange-500"
               aria-hidden="true"
@@ -118,7 +122,7 @@ const Navigation = () => {
             )}
 
             {hasnoti && (
-              <span className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black px-2 py-1 text-xs whitespace-nowrap text-white group-hover:block dark:bg-white dark:text-black">
+              <span  className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black px-2 py-1 text-xs whitespace-nowrap text-white group-hover:block dark:bg-white dark:text-black">
                 Click to see the notifications
               </span>
             )}
@@ -128,7 +132,7 @@ const Navigation = () => {
                 No new notification
               </span>
             )}
-          </a>
+          </Link>
         </div>
         <Button
           as={NavLink}

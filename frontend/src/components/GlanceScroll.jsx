@@ -1,14 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
+import AboutUs from './AboutUs';
 const GlanceScroll = () => {
-    const sectionRef = useRef(null);
-    const containerRef = useRef(null);
+    const component = useRef();
+    const slider = useRef();
     const numbersRef = useRef([]);
     const [currentCard, setCurrentCard] = useState(0);
+
     gsap.registerPlugin(ScrollTrigger);
-    const [isInView, setIsInView] = useState(false);
 
     const cards = [
         {
@@ -81,240 +81,159 @@ const GlanceScroll = () => {
         }
     ];
 
-    // Animate numbers
-    const animateNumber = (element, finalNumber, duration = 2000) => {
-        if (!element) return;
+    useLayoutEffect(() => {
+        let ctx = gsap.context(() => {
+            let panels = gsap.utils.toArray(".panel");
 
-        let startNumber = 0;
-        const increment = finalNumber / (duration / 16);
+            if (panels.length === 0) return;
 
-        const timer = setInterval(() => {
-            startNumber += increment;
-            if (startNumber >= finalNumber) {
-                element.textContent = finalNumber;
-                clearInterval(timer);
-            } else {
-                element.textContent = Math.floor(startNumber);
-            }
-        }, 16);
-    };
+            // Create the horizontal scroll animation
+            gsap.to(panels, {
+                xPercent: -100 * (panels.length - 1),
+                ease: "none",
+                scrollTrigger: {
+                    trigger: slider.current,
+                    pin: true,
+                    scrub: 1,
+                    start: "top top",
+                    end: () => "+=" + (slider.current.offsetWidth * 2), // Increased duration
+                    anticipatePin: 1, // Helps with smoother pinning
+                    refreshPriority: -1, // Ensures proper refresh order
+                    onUpdate: (self) => {
+                        const progress = self.progress;
+                        // const newCurrentCard = Math.round(progress * (panels.length - 1));
 
-    
-    useEffect(() => {
-        if (!sectionRef.current || !containerRef.current) return;
+                        // if (newCurrentCard !== currentCard) {
+                        //     setCurrentCard(newCurrentCard);
 
-        const section = sectionRef.current;
-        const container = containerRef.current;
-
-        // Clear any existing ScrollTriggers for this section
-        ScrollTrigger.getAll().forEach(trigger => {
-            if (trigger.trigger === section) {
-                trigger.kill();
-            }
-        });
-
-        // Horizontal scroll animation
-        const maxScroll = container.scrollWidth - container.clientWidth;
-        
-        const scrollTween = gsap.to(container, {
-            scrollLeft: maxScroll,
-            ease: "none",
-            scrollTrigger: {
-                trigger: section,
-                start: "top top",
-                end: "bottom bottom", // Changed to ensure full animation completes
-                scrub: 1,
-                pin: true,
-                pinSpacing: true,
-                anticipatePin: 1,
-                refreshPriority: -1,
-                onUpdate: (self) => {
-                    const progress = self.progress;
-                    const cardWidth = container.clientWidth;
-                    const currentScroll = progress * maxScroll;
-                    // Better card calculation to prevent glitching
-                    const newCurrentCard = Math.min(
-                        Math.floor((progress * cards.length)),
-                        cards.length - 1
-                    );
-                    
-                    if (newCurrentCard !== currentCard) {
-                        setCurrentCard(newCurrentCard);
-                        
-                        // Animate the number for the current card when it comes into view
-                        if (numbersRef.current[newCurrentCard]) {
-                            gsap.fromTo(numbersRef.current[newCurrentCard],
-                                { textContent: 0 },
-                                {
-                                    textContent: cards[newCurrentCard].number,
-                                    duration: 1.5,
-                                    ease: "power2.out",
-                                    snap: { textContent: 1 }
-                                }
-                            );
-                        }
+                        //     // Animate the number for the current card
+                        //     if (numbersRef.current[newCurrentCard]) {
+                        //         gsap.fromTo(numbersRef.current[newCurrentCard], {
+                        //             textContent: 0
+                        //         }, {
+                        //             textContent: cards[newCurrentCard].number,
+                        //             duration: 1.5,
+                        //             ease: "power2.out",
+                        //             snap: { textContent: 1 }
+                        //         });
+                        //     }
+                        // }
                     }
-                },
-                // onEnter: () => {
-                //     setIsInView(true);
-                //     setCurrentCard(0);
-                //     // Animate first card number when entering
-                //     if (numbersRef.current[0]) {
-                //         gsap.fromTo(numbersRef.current[0],
-                //             { textContent: 0 },
-                //             {
-                //                 textContent: cards[0].number,
-                //                 duration: 1.5,
-                //                 ease: "power2.out",
-                //                 snap: { textContent: 1 }
-                //             }
-                //         );
-                //     }
-                // },
-                // // onLeave: () => setIsInView(false),
-                // onEnterBack: () => {
-                //     setIsInView(true);
-                //     setCurrentCard(0);
-                // }
-            }
-        });
+                }
+            });
+        }, component);
 
-        return () => {
-            // scrollTween.scrollTrigger?.kill();
-        };
-    }, []);
-
-    const getAccentClasses = (color) => {
-        const colors = {
-            blue: 'border-blue-500 text-blue-600',
-            green: 'border-green-500 text-green-600',
-            cyan: 'border-cyan-500 text-cyan-600',
-            yellow: 'border-yellow-500 text-yellow-600'
-        };
-        return colors[color] || colors.blue;
-    };
+        return () => ctx.revert();
+    }, [currentCard]);
 
     return (
-        <div className="w-full bg-gray-50">
-            {/* Main horizontal scroll section */}
-            <div
-                ref={sectionRef}
-                className=" relative"
-                style={{
-                    // calculate the height based on the number of cards
-                    height: `${Math.min(cards.length, 3) * 100}vh`
-                }}
-                // Increased height to provide more scroll distance for all cards
-            >
-                <div className="sticky top-0 h-screen overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
-                    {/* Header */}
-                    <div className="absolute top-0 left-0 right-0 z-20 bg-black/20 backdrop-blur-sm">
-                        <div className="flex items-center justify-between p-6">
-                            <div>
-                                <h2 className="text-3xl font-bold text-white">CitiSevak at a Glance</h2>
-                                <p className="text-gray-300">Making communities better, one report at a time</p>
-                            </div>
+        <div className="w-full" ref={component}>
+            <AboutUs/>
 
-                            {/* Progress indicators */}
-                            <div className="flex space-x-2">
-                                {cards.map((_, index) => (
-                                    <div
-                                        key={index}
-                                        className={`w-3 h-3 rounded-full transition-all duration-300 ${currentCard === index
-                                                ? 'bg-white shadow-lg scale-125'
-                                                : 'bg-white/40'
-                                            }`}
-                                    />
-                                ))}
-                            </div>
+            {/* Horizontal scroll container */}
+            <section ref={slider} className="flex overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800" style={{ willChange: 'transform' }}>
+                {/* Header */}
+                <div className="absolute top- left-0 right-0 z-20 bg-black/20 backdrop-blur-sm">
+                    <div className="flex items-center justify-between p-6">
+                        <div>
+                            <h2 className="text-3xl font-bold text-white">CitiSevak at a Glance</h2>
+                            <p className="text-gray-300">Making communities better, one report at a time</p>
                         </div>
-                    </div>
 
-                    {/* Horizontal scrolling container */}
-                    <div
-                        ref={containerRef}
-                        className="flex h-full overflow-x-hidden pt-24 pb-8"
-                    >
-                        {cards.map((card, index) => (
-                            <div
-                                key={card.id}
-                                className="min-w-full h-full flex items-center px-8"
-                            >
-                                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 h-full items-center">
-                                    {/* Left side - Image */}
-                                    <div className="relative h-full max-h-[500px] min-h-[400px]">
-                                        <div className="relative h-full rounded-3xl overflow-hidden shadow-2xl">
-                                            <img
-                                                src={card.img}
-                                                alt={card.title}
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <div className={`absolute inset-0 bg-gradient-to-t ${card.bgGradient} opacity-30`} />
-
-                                            {/* Floating icon */}
-                                            <div className="absolute top-6 right-6 bg-white/20 backdrop-blur-sm rounded-full p-4">
-                                                <span className="text-4xl">{card.icon}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Right side - Stats */}
-                                    <div className="text-white space-y-8">
-                                        {/* Main number */}
-                                        <div className="text-center lg:text-left">
-                                            <div className="flex items-baseline justify-center lg:justify-start gap-2">
-                                                <span
-                                                    ref={el => numbersRef.current[index] = el}
-                                                    className="text-8xl lg:text-9xl font-black text-white"
-                                                >
-                                                    0
-                                                </span>
-                                                <span className="text-5xl font-bold text-white/80">{card.suffix}</span>
-                                            </div>
-                                            <h3 className="text-3xl lg:text-4xl font-bold mb-2">{card.title}</h3>
-                                            <p className="text-xl text-gray-300 mb-6">{card.description}</p>
-                                        </div>
-
-                                        {/* Stats grid */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            {card.stats.map((stat, statIndex) => (
-                                                <div key={statIndex} className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center border border-white/20">
-                                                    <div className="text-2xl mb-2">{stat.icon}</div>
-                                                    <div className="text-2xl font-bold mb-1">{stat.value}</div>
-                                                    <div className="text-sm text-gray-300">{stat.label}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {/* Impact statement */}
-                                        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                                            <h4 className="font-semibold mb-2 text-lg">Community Impact</h4>
-                                            <p className="text-gray-300 italic">"{card.impact}"</p>
-                                        </div>
-
-                                        {/* CTA */}
-                                        <div className="text-center lg:text-left">
-                                            <button className={`bg-white text-gray-900 font-semibold py-3 px-8 rounded-full hover:bg-gray-100 transform hover:scale-105 transition-all duration-300 shadow-xl`}>
-                                                View Details
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Scroll hint */}
-                    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-center text-white/60">
-                        <p className="text-sm">Keep scrolling to explore each initiative</p>
-                        <div className="w-12 h-6 border-2 border-white/40 rounded-full mt-2 mx-auto">
-                            <div className="w-2 h-2 bg-white/60 rounded-full mx-auto mt-1 animate-bounce"></div>
+                        {/* Progress indicators */}
+                        <div className="flex space-x-2">
+                            {cards.map((_, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`w-3 h-3 rounded-full transition-all duration-300 ${currentCard === idx
+                                            ? 'bg-white shadow-lg scale-125'
+                                            : 'bg-white/40'
+                                        }`}
+                                />
+                            ))}
                         </div>
                     </div>
                 </div>
-            </div>
+                {cards.map((card, index) => (
+                    <div key={card.id} className="panel min-w-full h-screen flex items-center relative" style={{ willChange: 'transform' }}>
 
-            {/* Spacer content after the horizontal scroll section */}
+
+                        {/* Content */}
+                        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 h-full items-center px-8 pt-24 pb-8">
+                            {/* Left side - Image */}
+                            <div className="relative h-full max-h-[500px] min-h-[400px]">
+                                <div className="relative h-full rounded-3xl overflow-hidden shadow-2xl">
+                                    <img
+                                        src={card.img}
+                                        alt={card.title}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div className={`absolute inset-0 bg-gradient-to-t ${card.bgGradient} opacity-30`} />
+
+                                    {/* Floating icon */}
+                                    <div className="absolute top-6 right-6 bg-white/20 backdrop-blur-sm rounded-full p-4">
+                                        <span className="text-4xl">{card.icon}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right side - Stats */}
+                            <div className="text-white space-y-8">
+                                {/* Main number */}
+                                <div className="text-center lg:text-left">
+                                    <div className="flex items-baseline justify-center lg:justify-start gap-2">
+                                        <span
+                                            ref={el => numbersRef.current[index] = el}
+                                            className="text-8xl lg:text-9xl font-black text-white"
+                                        >
+                                            {card.number}
+                                        </span>
+                                        <span className="text-5xl font-bold text-white/80">{card.suffix}</span>
+                                    </div>
+                                    <h3 className="text-3xl lg:text-4xl font-bold mb-2">{card.title}</h3>
+                                    <p className="text-xl text-gray-300 mb-6">{card.description}</p>
+                                </div>
+
+                                {/* Stats grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {card.stats.map((stat, statIndex) => (
+                                        <div key={statIndex} className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center border border-white/20">
+                                            <div className="text-2xl mb-2">{stat.icon}</div>
+                                            <div className="text-2xl font-bold mb-1">{stat.value}</div>
+                                            <div className="text-sm text-gray-300">{stat.label}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Impact statement */}
+                                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                                    <h4 className="font-semibold mb-2 text-lg">Community Impact</h4>
+                                    <p className="text-gray-300 italic">"{card.impact}"</p>
+                                </div>
+
+                                {/* CTA */}
+                                <div className="text-center lg:text-left">
+                                    <button className="bg-white text-gray-900 font-semibold py-3 px-8 rounded-full hover:bg-gray-100 transform hover:scale-105 transition-all duration-300 shadow-xl">
+                                        View Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Scroll hint - only show on first panel */}
+                        {index === 0 && (
+                            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-center text-white/60">
+                                <p className="text-sm">Keep scrolling to explore each initiative</p>
+                                <div className="w-12 h-6 border-2 border-white/40 rounded-full mt-2 mx-auto">
+                                    <div className="w-2 h-2 bg-white/60 rounded-full mx-auto mt-1 animate-bounce"></div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </section>
+
+            {/* After section */}
             <div className="h-screen flex items-center justify-center bg-white">
                 <div className="text-center">
                     <h2 className="text-4xl font-bold text-gray-900 mb-4">Ready to make a difference?</h2>

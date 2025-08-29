@@ -1,5 +1,5 @@
 // src/api/notifications.js
-import apiClient from "../lib/axios";
+import apiClient from "../libs/axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Notifications API functions

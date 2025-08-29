@@ -18,7 +18,7 @@ const Hero = () => {
                     <div className="relative w-full h-full">
                         {/* Main background image */}
                         <img
-                            src="./india bg upscale.jpg"
+                            src="./india bg upscale1.jpg"
                             alt="Map background"
                             className="w-full h-full object-cover opacity-70"
                         />
