@@ -1,15 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from uuid import UUID
+from passlib.context import CryptContext
 
 from app.database import get_db
 from app.models import Authority, User
 from app.schemas.authority_schemas import (
+    AuthorityCreateRequest,
     AuthorityUpdateRequest, 
     AuthorityResponse,
     AuthorityUserResponse
 )
 from app.auth import get_current_user
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 router = APIRouter(prefix="/authority", tags=["Authorities"])
 
@@ -160,3 +165,71 @@ def delete_authority(
     db.commit()
     
     return
+
+@router.post("/create-authority", response_model=AuthorityResponse, status_code=status.HTTP_201_CREATED)
+def create_authority(
+    authority_data: AuthorityCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # This validates the token and gets user
+):
+    """
+    Create a new authority user and authority record.
+    Creates both user account and authority in one request.
+    Only admins can create authorities.
+    """
+    # 🔒 ADMIN VALIDATION: Check if current user is admin (role = 2)
+    if current_user.role != 2:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can create authorities"
+        )
+    
+    # Check if user email already exists
+    existing_user = db.query(User).filter(User.email == authority_data.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    try:
+        # Create user account
+        hashed_password = pwd_context.hash(authority_data.password)
+        
+        new_user = User(
+            name=authority_data.user_name,
+            email=authority_data.email,
+            password=hashed_password,
+            role=1,  # Authority role
+            phone=authority_data.contact_phone,
+            is_google=False,
+            district=authority_data.district
+        )
+        
+        db.add(new_user)
+        db.flush()  # Flush to get the user ID
+        
+        # Create authority record (using same email)
+        new_authority = Authority(
+            name=authority_data.authority_name,
+            district=authority_data.district,
+            contact_email=authority_data.email,  # ✅ Same email as user
+            contact_phone=authority_data.contact_phone,
+            category=authority_data.category,
+            user_id=new_user.id
+        )
+        
+        db.add(new_authority)
+        db.commit()
+        
+        # Refresh to get all data with relationships
+        db.refresh(new_authority)
+        
+        return create_authority_response(new_authority)
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create authority: {str(e)}"
+        )
