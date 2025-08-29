@@ -86,13 +86,13 @@ const Heatmap = () => {
 
     // Add markers to map
     markers.forEach((markerData) => {
-      const marker = window.L.marker([markerData.lat, markerData.lng], { 
-        icon: markerData.icon, 
-        riseOnHover: true 
+      const marker = window.L.marker([markerData.lat, markerData.lng], {
+        icon: markerData.icon,
+        riseOnHover: true
       }).addTo(map);
 
-      const statusColor = markerData.status === "Resolved" ? "#10b981" : 
-                         markerData.status === "In Progress" ? "#f59e0b" : "#ef4444";
+      const statusColor = markerData.status === "Resolved" ? "#10b981" :
+        markerData.status === "In Progress" ? "#f59e0b" : "#ef4444";
 
       marker.bindPopup(
         `<div class="p-2">
@@ -117,7 +117,7 @@ const Heatmap = () => {
     // Animate markers after a short delay
     setTimeout(() => {
       const markerElements = document.querySelectorAll('.leaflet-marker-icon');
-      gsap.fromTo(markerElements, 
+      gsap.fromTo(markerElements,
         { scale: 0, rotation: 180 },
         { scale: 1, rotation: 0, duration: 0.8, stagger: 0.1, ease: "back.out(1.7)" }
       );
@@ -134,7 +134,7 @@ const Heatmap = () => {
   // GSAP Animations
   useEffect(() => {
     const tl = gsap.timeline();
-    
+
     // Animate navbar
     tl.fromTo(navbarRef.current,
       { y: -100, opacity: 0 },
@@ -175,7 +175,6 @@ const Heatmap = () => {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-gray-50">
-      
 
       {/* Map Title */}
       <div ref={titleRef} className="absolute top-24 left-8 z-40">
@@ -189,45 +188,45 @@ const Heatmap = () => {
       </div>
 
       {/* Map Container */}
-      <div 
-        ref={mapRef} 
+      <div
+        ref={mapRef}
         className="w-full h-full"
         style={{ zIndex: 1 }}
       />
 
       {/* Legend */}
-      <div 
+      <div
         ref={legendRef}
         className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-4 z-40 border"
       >
         <h3 className="font-semibold text-gray-800 mb-3 text-sm">Complaint Types</h3>
         <div className="space-y-2">
           <div className="flex items-center space-x-3">
-            <img 
-              src="https://cdn-icons-png.flaticon.com/128/2514/2514330.png" 
-              alt="Garbage" 
+            <img
+              src="https://cdn-icons-png.flaticon.com/128/2514/2514330.png"
+              alt="Garbage"
               className="w-5 h-5"
             />
             <span className="text-sm text-gray-700">Garbage & Sanitation</span>
           </div>
           <div className="flex items-center space-x-3">
-            <img 
-              src="https://cdn-icons-png.flaticon.com/128/12843/12843591.png" 
-              alt="Pothole" 
+            <img
+              src="https://cdn-icons-png.flaticon.com/128/12843/12843591.png"
+              alt="Pothole"
               className="w-5 h-5"
             />
             <span className="text-sm text-gray-700">Road & Infrastructure</span>
           </div>
           <div className="flex items-center space-x-3">
-            <img 
-              src="https://cdn-icons-png.flaticon.com/128/252/252590.png" 
-              alt="Electricity" 
+            <img
+              src="https://cdn-icons-png.flaticon.com/128/252/252590.png"
+              alt="Electricity"
               className="w-5 h-5"
             />
             <span className="text-sm text-gray-700">Electricity & Utilities</span>
           </div>
         </div>
-        
+
         {/* Status Legend */}
         <div className="mt-4 pt-3 border-t border-gray-200">
           <h4 className="font-semibold text-gray-800 mb-2 text-sm">Status</h4>
@@ -280,6 +279,14 @@ const Heatmap = () => {
           </div>
         </div>
       )}
+      <style>
+        {`.dark .leaflet-layer,
+.dark .leaflet-control-zoom-in,
+.dark .leaflet-control-zoom-out,
+.dark .leaflet-control-attribution {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}`}
+      </style>
     </div>
   );
 };

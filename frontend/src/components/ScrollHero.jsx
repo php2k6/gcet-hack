@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-// import indiaMap from "../assets/india bg upscale.jpg";
+import indiaMap from "../assets/india bg upscale1.png";
 import Glance from "./Glance";
+import GlanceScroll from "./GlanceScroll";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -80,36 +81,27 @@ export default function HeroSection() {
         duration: 1,
       });
 
-      // Phase 2: Fade out first title at 70% of timeline
-      tl.to(
-        titleRef.current,
-        {
-          opacity: 0,
-          y: -50,
-          scale: 0.9,
-          duration: 0.3,
-          ease: "power2.in",
-        },
-        0.7,
-      ); // At 70% of timeline
+            // Phase 2: Fade out first title at 70% of timeline
+            tl.to(titleRef.current, {
+                opacity: 0,
+                y: -50,
+                scale: 0.9,
+                duration: 0.3,
+                ease: "power2.in"
+            }, 0.5); // At 70% of timeline
 
-      // Phase 3: Fade in second title at 70% on left side
-      tl.fromTo(
-        secondTitleRef.current,
-        {
-          opacity: 0,
-          x: -100,
-          scale: 0.8,
-        },
-        {
-          opacity: 1,
-          x: 0,
-          scale: 1,
-          duration: 0.3,
-          ease: "back.out(1.7)",
-        },
-        0.7,
-      ); // At 70% of timeline
+            // Phase 3: Fade in second title at 70% on left side
+            tl.fromTo(secondTitleRef.current, {
+                opacity: 0,
+                x: -100,
+                scale: 0.8
+            }, {
+                opacity: 1,
+                x: 0,
+                scale: 1,
+                duration: 0.3,
+                ease: "back.out(1.7)"
+            }, 0.5); // At 70% of timeline
 
       // Fade out scroll hint when zoom starts
       tl.to(
@@ -137,25 +129,25 @@ export default function HeroSection() {
     return () => ctx.revert();
   }, []);
 
-  return (
-    <>
-      {/* Hero Section with Animation */}
-      <section
-        ref={sectionRef}
-        className="relative h-[300vh] overflow-hidden dark:bg-[#001219]"
-      >
-        {/* Sticky map container */}
-        <div className="sticky top-0 flex h-screen items-center justify-center overflow-hidden">
-          {/* India Map */}
-          <div className="absolute inset-0 -z-10 flex items-center justify-center">
-            <img
-              ref={indiaRef}
-              src={indiaMap}
-              alt="India Map"
-              className="h-auto w-[60%] object-contain will-change-transform"
-              style={{ transformOrigin: "center center" }}
-            />
-          </div>
+    return (
+        <>
+            {/* Hero Section with Animation */}
+            <section 
+                ref={sectionRef}
+                className="relative h-[100vh] dark:bg-[#001219] overflow-hidden"
+            >
+                {/* Sticky map container */}
+                <div className="sticky top-0 flex items-center justify-center h-screen overflow-hidden">
+                    {/* India Map */}
+                    <div className="absolute inset-0 flex items-center justify-center -z-10">
+                        <img
+                            ref={indiaRef}
+                            src={indiaMap}
+                            alt="India Map"
+                            className="w-[60%] h-auto object-contain will-change-transform"
+                            style={{ transformOrigin: "center center" }}
+                        />
+                    </div>
 
           {/* First Title - Center */}
           <div
@@ -202,24 +194,25 @@ export default function HeroSection() {
         </div>
       </section>
 
-      {/* Fixed Background - Stays in place after animation */}
-      <div
-        ref={fixedBgRef}
-        className="fixed inset-0 -z-10 flex items-center justify-center opacity-0 dark:bg-[#001219]"
-        style={{
-          opacity: 0,
-          transform: "scale(5) translateX(32%) ",
-          transformOrigin: "center center",
-        }}
-      >
-        <img
-          src={indiaMap}
-          alt="India Map Background"
-          className="h-auto w-[60%] object-contain"
-        />
-      </div>
-
-      <Glance />
-    </>
-  );
+            {/* Fixed Background - Stays in place after animation */}
+            <div 
+            ref={fixedBgRef}
+                className="fixed inset-0 -z-10 flex items-center justify-center dark:bg-[#001219] opacity-0"
+                style={{ 
+                        opacity: 0,
+                        transform: 'scale(5) translateX(32%) ',
+                        transformOrigin: "center center"
+                    }}
+                >
+                <img
+                    src={indiaMap}
+                    alt="India Map Background"
+                    className="w-[60%] h-auto object-contain"
+                    
+                />
+            </div>
+            
+            <GlanceScroll/>
+        </>
+    );
 }

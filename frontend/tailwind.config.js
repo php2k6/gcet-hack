@@ -1,6 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
+  darkMode: 'class',
+  content: [
+    "./index.html",
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
   theme: {
     extend: {
       fontFamily: {
@@ -10,6 +14,10 @@ module.exports = {
         primary: {
           DEFAULT: "#ff9800", // Orange
         },
+        dark: {
+          DEFAULT: '#003049', 
+        }
+
       },
     },
   },

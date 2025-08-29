@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Navigation from "./components/Navigation";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
 import { ThemeProvider, createTheme } from "flowbite-react";
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './libs/react-query';
 
 // Pages
 import Home from "./pages/Home";
@@ -10,8 +13,15 @@ import Complaints from "./pages/Complaints";
 import Heatmap from "./pages/Heatmap";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
-import NewIssue from "./pages/NewIssue";
+import ComplaintDetails from "./pages/ComplaintDetails";
+import Profile from "./pages/profile";
+import NotFound from "./pages/NotFound";
+import Navigation from "./components/Navigation";
+import Footer from "./components/Footer";
 import Notification from "./pages/Notification";
+
+const GOOGLE_CLIENT_ID = "233711984336-lmlqdbhcc7uksgusqchb4envpb6224f8.apps.googleusercontent.com";
+
 
 export default function App() {
   const customTheme = createTheme({
@@ -63,39 +73,43 @@ export default function App() {
     },
     button: {
       color: {
-        primary:
-          "rounded-full bg-[#fd6500] text-white enabled:hover:bg-[#c14d00] dark:bg-[#fd6500] dark:hover:bg-[#fd6500]",
-        secondary:
-          "border border-gray-300 bg-white text-gray-900 focus:ring-4 focus:ring-blue-300 enabled:hover:bg-gray-100 disabled:hover:bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:ring-gray-700 dark:enabled:hover:bg-gray-700 dark:disabled:hover:bg-gray-800",
-        success:
-          "border border-transparent bg-green-600 text-white focus:ring-4 focus:ring-green-300 enabled:hover:bg-green-700 disabled:hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800 dark:disabled:hover:bg-green-600",
-        danger:
-          "border border-transparent bg-red-600 text-white focus:ring-4 focus:ring-red-300 enabled:hover:bg-red-700 disabled:hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900 dark:disabled:hover:bg-red-600",
-      },
+        primary: "rounded-full text-white bg-[#fd6500]  enabled:hover:bg-[#c14d00]  dark:bg-[#fd6500] dark:hover:bg-[#fd6500] ",
+        secondary: "text-gray-900 bg-white border border-gray-300 enabled:hover:bg-gray-100 focus:ring-4 focus:ring-blue-300 disabled:hover:bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:enabled:hover:bg-gray-700 dark:focus:ring-gray-700 dark:disabled:hover:bg-gray-800",
+        success: "text-white bg-green-600 border border-transparent enabled:hover:bg-green-700 focus:ring-4 focus:ring-green-300 disabled:hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800 dark:disabled:hover:bg-green-600",
+        danger: "text-white bg-red-600 border border-transparent enabled:hover:bg-red-700 focus:ring-4 focus:ring-red-300 disabled:hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900 dark:disabled:hover:bg-red-600"
+      }
     },
+    
+    
   });
 
   return (
-    <>
-      <ThemeProvider theme={customTheme} defaultTheme="system" enableSystem>
-        <Router>
-          {/* Navbar always visible */}
-          <Navigation />
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={customTheme} defaultTheme="system" enableSystem>
+          <Router>
+            {/* Navbar always visible */}
+            <Navigation />
 
-          {/* Declarative routing */}
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/heatmap" element={<Heatmap />} />
-            <Route path="/complaints" element={<Complaints />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/report" element={<Report />} />
-            <Route path="/notification" element={<Notification />} />
-            <Route path="/newissue" element={<NewIssue />} />
-          </Routes>
-        </Router>
-      </ThemeProvider>
-    </>
+            {/* Declarative routing */}
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/heatmap" element={<Heatmap />} />
+              <Route path="/complaints" element={<Complaints />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/report" element={<Report />} />
+              <Route path="/profile" element={<Profile />} />
+              {/* <Route path="/complaints/new" element={<NewComplaint />} /> */}
+              <Route path="/notifications" element={<Notification />} />
+              <Route path="/complaints/:id" element={<ComplaintDetails />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <Footer/>
+          </Router>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </GoogleOAuthProvider>
   );
 }
