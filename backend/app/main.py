@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from app.database import engine
 from app.models import Base
-from app.routers import chatbot, auth, users, issues, authorities, votes, stats
+from app.routers import chatbot, auth, users, issues, authorities, votes, stats, heatmap
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import all models to ensure they're registered
