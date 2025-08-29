@@ -12,16 +12,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# JWT Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "500"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
-# Password hashing
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT Bearer scheme
 security = HTTPBearer()
 
 class AuthHandler:
@@ -74,13 +72,10 @@ class AuthHandler:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type"
             )
-        
-        # Create new access token
         user_data = {"sub": payload.get("sub"), "username": payload.get("username")}
         access_token = self.create_access_token(data=user_data)
         return access_token
 
-# Create auth handler instance
 auth_handler = AuthHandler()
 
 def get_current_user(
@@ -101,7 +96,6 @@ def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
             
-        # Check if token is access token
         if payload.get("type") != "access":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -115,7 +109,6 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Get user from database
     user = db.query(User).filter(User.email == email).first()
     if user is None:
         raise HTTPException(
@@ -138,7 +131,6 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
         )
     return current_user
 
-# Optional: For routes that don't require authentication but can use user info if available
 def get_optional_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db)
@@ -152,7 +144,6 @@ def get_optional_current_user(
     except HTTPException:
         return None
 
-# Token response models
 class Token:
     def __init__(self, access_token: str, refresh_token: str, token_type: str = "bearer"):
         self.access_token = access_token

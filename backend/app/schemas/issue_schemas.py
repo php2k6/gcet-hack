@@ -26,12 +26,43 @@ class MediaResponse(BaseModel):
 
 # Issue request schemas
 class IssueCreateRequest(BaseModel):
-    authority_id: UUID4 = Field(..., description="Authority responsible for this issue")
+    #authority_id: UUID4 = Field(..., description="Authority responsible for this issue")
     title: str = Field(..., min_length=5, max_length=255, description="Issue title")
     description: str = Field(..., min_length=10, description="Detailed description of the issue")
     location: str = Field(..., min_length=3, max_length=255, description="Location where issue occurred")
-    category: str = Field(..., min_length=2, max_length=100, description="Issue category")
-    priority: Optional[int] = Field(1, ge=1, le=4, description="Priority level (1=low, 2=medium, 3=high, 4=urgent)")
+    district: str = Field(..., min_length=2, max_length=100, description="District where issue occurred")
+    #category: str = Field(..., min_length=2, max_length=100, description="Issue category")
+    #priority: Optional[int] = Field(1, ge=1, le=4, description="Priority level (1=low, 2=medium, 3=high, 4=urgent)")
+
+# Enhanced Issue model for internal operations (includes district field)
+class IssueCreateData(BaseModel):
+    """Extended Issue model with additional district field for internal operations.
+    This bridges the gap between API requests and database operations."""
+    user_id: UUID4
+    authority_id: UUID4  # Authority ID resolved from category and district
+    title: str
+    description: str
+    location: str
+    district: str  # Additional field used for authority lookup (not stored in DB)
+    category: str  # AI-detected category
+    priority: int  # AI-detected priority
+    status: int = 0  # Default status (open)
+    
+    class Config:
+        from_attributes = True
+    
+    def to_issue_dict(self) -> dict:
+        """Convert to dictionary for Issue model creation (excludes district)"""
+        return {
+            "user_id": self.user_id,
+            "authority_id": self.authority_id, 
+            "title": self.title,
+            "description": self.description,
+            "location": self.location,
+            "category": self.category,
+            "priority": self.priority,
+            "status": self.status
+        }
 
 class IssueUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, min_length=5, max_length=255, description="Updated issue title")

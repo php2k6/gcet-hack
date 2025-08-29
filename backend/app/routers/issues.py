@@ -9,11 +9,12 @@ import os
 import pathlib
 import uuid as uuid_lib
 from uuid import UUID
-
+from app.util import get_query_response
 from app.database import get_db
 from app.models import Issue, User, Authority, Vote, Media
 from app.schemas.issue_schemas import (
     IssueCreateRequest, 
+    IssueCreateData,  # Added the new schema
     IssueUpdateRequest, 
     IssueResponse, 
     IssueCreateResponse,
@@ -24,6 +25,11 @@ from app.schemas.issue_schemas import (
     MediaResponse
 )
 from app.auth import get_current_user
+from transformers import RobertaTokenizer, RobertaModel
+import torch
+import tensorflow as tf
+import numpy as np
+
 
 router = APIRouter(prefix="/issues", tags=["Issues"])
 
@@ -107,8 +113,87 @@ def get_authority(category: str, district: str, db: Session) -> str:
     
     except Exception as e:
         raise Exception(f"Error getting authority ID: {str(e)}")
+    
+def get_priority_from_text(description : str):
+    """Get the priority from issue description"""
+    try:
+        result = get_query_response(description, "system_prompt1.txt")
+        
+        # Parse the AI response to extract integer priority
+        # Expected format: "Priority: X" or just "X" where X is 0, 1, or 2
+        result_lower = result.lower().strip()
+        
+        # Extract number from various formats
+        if "priority:" in result_lower:
+            # Format: "Priority: 2"
+            priority_part = result_lower.split("priority:")[-1].strip()
+            priority_num = ''.join(filter(str.isdigit, priority_part))
+        elif result_lower in ['0', '1', '2']:
+            # Direct number
+            priority_num = result_lower
+        else:
+            # Extract first digit found
+            priority_num = ''.join(filter(str.isdigit, result))
+        
+        # Convert to integer and validate
+        if priority_num:
+            priority = int(priority_num)
+            # Map AI priority (0=normal, 1=urgent, 2=severe) to our scale (1-4)
+            if priority == 0:
+                return 1  # Normal
+            elif priority == 1:
+                return 2  # Urgent  
+            elif priority == 2:
+                return 3  # Severe
+            else:
+                return 1  # Default to normal
+        else:
+            return 1  # Default to normal priority
+            
+    except Exception as e:
+        print(f"Priority detection failed: {e}")
+        return 1  # Default to normal priority
 
-
+def get_category_from_text(description: str):
+    """Get the category from issue description"""
+    try:
+        # Suppress warnings for cleaner output
+        import warnings
+        warnings.filterwarnings("ignore", category=UserWarning)
+        
+        # Initialize models with warning suppression
+        tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+        roberta = RobertaModel.from_pretrained("roberta-base")
+        
+        tokenized = tokenizer(description, 
+                       return_tensors="pt", 
+                       truncation=True, 
+                       padding=True, 
+                       max_length=128)
+        
+        # Extract the embeddings using RoBERTa
+        with torch.no_grad():
+            outputs = roberta(**tokenized)
+            # Use the [CLS] token embedding (first token)
+            embeddings = outputs.last_hidden_state[:, 0, :].numpy()
+        
+        # Load the TensorFlow model with proper path
+        model_path = os.path.join(os.path.dirname(__file__), 'model_new.h5')
+        if not os.path.exists(model_path):
+            print(f"Model file not found at: {model_path}")
+            return "Road Authority"  # Default fallback
+            
+        model = tf.keras.models.load_model(model_path)
+        pred = model.predict(embeddings, verbose=0)  # Suppress TF output
+        pred_label = np.argmax(pred, axis=1)
+        categories = ["Road Authority", "Dumping/Waste Authority","Public Amenities Authority","Electricity Company"]
+        return categories[pred_label[0]]
+    except Exception as e:
+        # Fallback to default category if AI fails
+        print(f"AI category detection failed: {str(e)}")
+        return "Road Authority"
+        print(f"AI category detection failed: {e}")
+        return "Road Authority"
 
 def check_issue_edit_permission(current_user: User, issue: Issue):
     """Check if user has permission to edit/delete issue"""
@@ -131,33 +216,48 @@ def check_issue_edit_permission(current_user: User, issue: Issue):
     
     return False
 
+def create_issue_data(
+    request: IssueCreateRequest, 
+    user_id: UUID, 
+    db: Session
+) -> IssueCreateData:
+    """Convert API request to internal issue data model with AI processing"""
+    
+    # Get AI-generated category first
+    ai_category = get_category_from_text(request.description)
+    
+    # Get authority based on AI-detected category and user's district
+    authority_id = get_authority(ai_category, request.district, db)
+    
+    # Get AI-generated priority
+    ai_priority = get_priority_from_text(request.description)
+    
+    # Create the internal data model
+    return IssueCreateData(
+        user_id=user_id,
+        authority_id=UUID(authority_id),  # Convert string to UUID
+        title=request.title,
+        description=request.description,
+        location=request.location,
+        district=request.district,
+        category=ai_category,
+        priority=ai_priority,
+        status=0  # Default to open
+    )
+
 @router.post("/", response_model=IssueCreateResponse, status_code=201)
 def create_issue(
     issue_data: IssueCreateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a new issue"""
+    """Create a new issue with AI-powered category and priority detection"""
     
-    # Verify authority exists
-    authority = db.query(Authority).filter(Authority.id == issue_data.authority_id).first()
-    if not authority:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Authority not found"
-        )
+    # Convert API request to internal data model with AI processing
+    internal_issue_data = create_issue_data(issue_data, current_user.id, db)
     
-    # Create new issue
-    new_issue = Issue(
-        user_id=current_user.id,
-        authority_id=issue_data.authority_id,
-        title=issue_data.title,
-        description=issue_data.description,
-        location=issue_data.location,
-        category=issue_data.category,
-        priority=issue_data.priority or 1,
-        status=0  # Default to open
-    )
+    # Create new issue using the internal data model
+    new_issue = Issue(**internal_issue_data.to_issue_dict())
     
     db.add(new_issue)
     db.commit()
