@@ -111,6 +111,7 @@ class HeatmapIssueResponse(BaseModel):
     location: str
     priority: int
     status: int
+    category: str
     
     class Config:
         from_attributes = True
