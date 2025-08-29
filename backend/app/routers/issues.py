@@ -11,7 +11,7 @@ import uuid as uuid_lib
 from uuid import UUID
 from app.util import get_query_response
 from app.database import get_db
-from app.models import Issue, User, Authority, Vote, Media
+from app.models import Issue, User, Authority, Vote, Media, Notification
 from app.schemas.issue_schemas import (
     IssueCreateRequest, 
     IssueCreateData,  # Added the new schema
@@ -194,6 +194,9 @@ def get_category_from_text(description: str):
         return "Road Authority"
         print(f"AI category detection failed: {e}")
         return "Road Authority"
+def get_radius_from_text(description : str):
+    result = get_query_response(description,"system_prompt3.txt")
+    return result;
 
 def check_issue_edit_permission(current_user: User, issue: Issue):
     """Check if user has permission to edit/delete issue"""
@@ -245,6 +248,31 @@ def create_issue_data(
         status=0  # Default to open
     )
 
+def create_notification_for_authority(issue: Issue, db: Session):
+    """Create notification for authority when a new issue is created"""
+    # Get the authority
+    authority = db.query(Authority).filter(Authority.id == issue.authority_id).first()
+    if authority:
+        notification = Notification(
+            issue_id=issue.id,
+            user_id=authority.user_id,  # Use the authority's user_id
+            message=f"New issue reported: '{issue.title}' in your jurisdiction. Please review and take action.",
+            is_citizen=False,  # This is for authority
+            is_read=False
+        )
+        db.add(notification)
+
+def create_notification_for_user(issue: Issue, db: Session):
+    """Create notification for user when their issue is updated"""
+    notification = Notification(
+        issue_id=issue.id,
+        user_id=issue.user_id,
+        message=f"Your issue '{issue.title}' has been updated. Check the latest status.",
+        is_citizen=True,  # This is for citizen
+        is_read=False
+    )
+    db.add(notification)
+
 @router.post("/", response_model=IssueCreateResponse, status_code=201)
 def create_issue(
     issue_data: IssueCreateRequest,
@@ -262,6 +290,10 @@ def create_issue(
     db.add(new_issue)
     db.commit()
     db.refresh(new_issue)
+    
+    # Create notification for authority about new issue
+    create_notification_for_authority(new_issue, db)
+    db.commit()  # Commit the notification
     
     # Load relationships for response
     issue_with_relations = db.query(Issue).options(
@@ -540,6 +572,10 @@ def update_issue(
     
     db.commit()
     db.refresh(issue)
+    
+    # Create notification for user about issue update
+    create_notification_for_user(issue, db)
+    db.commit()  # Commit the notification
     
     return create_issue_response(issue)
 
