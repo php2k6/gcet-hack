@@ -12,6 +12,7 @@ from uuid import UUID
 from app.util import get_query_response
 from app.database import get_db
 from app.models import Issue, User, Authority, Vote, Media, Notification
+from app.services.azure_storage import get_azure_storage_service
 from app.schemas.issue_schemas import (
     IssueCreateRequest, 
     IssueCreateData,  # Added the new schema
@@ -70,9 +71,11 @@ def create_issue_response(issue: Issue) -> IssueResponse:
             id=media.id,
             issue_id=media.issue_id,
             path=media.path,
+            blob_name=media.blob_name,
             filename=media.filename,
             file_size=media.file_size,
             file_type=media.file_type,
+            storage_type=media.storage_type,
             created_at=media.created_at
         ) for media in issue.media
     ] if issue.media else []
@@ -607,14 +610,14 @@ def delete_issue(
     
     return
 
-@router.post("/media/{issue_id}", status_code=201)
-async def add_media_to_issue(
+@router.put("/media/{issue_id}", status_code=201)
+async def upload_media_to_issue(
     issue_id: UUID,
     files: List[UploadFile] = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Add media files to an existing issue"""
+    """Upload media files to Azure Blob Storage for an issue"""
     
     # Verify issue exists and user has permission
     issue = db.query(Issue).filter(Issue.id == issue_id).first()
@@ -639,36 +642,50 @@ async def add_media_to_issue(
                 detail=f"Invalid file: {file.filename}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
             )
     
-    # Save files and create Media records
+    # Get Azure Storage Service
+    azure_service = get_azure_storage_service()
     uploaded_files = []
+    
+    # Upload files and create Media records
     for file in files:
         try:
-            # Save file to disk
-            file_path, original_filename, file_size = save_uploaded_file(file, issue_id)
+            # Read file content
+            file_content = await file.read()
             
-            # Create Media record
+            # Upload to Azure Blob Storage
+            blob_url, blob_name = await azure_service.upload_file(
+                file_content=file_content,
+                file_name=file.filename,
+                issue_id=str(issue_id),
+                content_type=file.content_type
+            )
+            
+            # Create Media record with Azure Blob URL
             media_record = Media(
                 issue_id=issue_id,
-                path=file_path,
-                filename=original_filename,
-                file_size=file_size,
-                file_type=file.content_type
+                path=blob_url,  # Azure Blob URL
+                blob_name=blob_name,  # For deletion/management
+                filename=file.filename,
+                file_size=len(file_content),
+                file_type=file.content_type,
+                storage_type="azure_blob"
             )
             db.add(media_record)
-            uploaded_files.append(original_filename)
+            uploaded_files.append(file.filename)
             
         except Exception as e:
             db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to upload file {file.filename}: {str(e)}"
+                detail=f"Failed to upload file {file.filename} to Azure Blob Storage: {str(e)}"
             )
     
     db.commit()
     
     return {
-        "message": f"Added {len(uploaded_files)} media files to issue",
-        "uploaded_files": uploaded_files
+        "message": f"Uploaded {len(uploaded_files)} files to Azure Blob Storage",
+        "uploaded_files": uploaded_files,
+        "storage_type": "azure_blob"
     }
 
 @router.get("/media/{issue_id}", response_model=List[MediaResponse])
@@ -703,12 +720,12 @@ def get_issue_media(
     ]
 
 @router.delete("/media/{media_id}", status_code=204)
-def delete_media(
+async def delete_media(
     media_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete a specific media file"""
+    """Delete a specific media file from Azure Blob Storage and database"""
     
     # Find media record
     media = db.query(Media).filter(Media.id == media_id).first()
@@ -733,9 +750,14 @@ def delete_media(
             detail="Not authorized to delete this media"
         )
     
-    # Delete file from disk
+    # Delete file based on storage type
     try:
-        if os.path.exists(media.path):
+        if media.storage_type == "azure_blob" and media.blob_name:
+            # Delete from Azure Blob Storage
+            azure_service = get_azure_storage_service()
+            await azure_service.delete_file(media.blob_name)
+        elif media.storage_type == "local" and os.path.exists(media.path):
+            # Delete local file (fallback for existing files)
             os.remove(media.path)
     except Exception as e:
         # Log error but continue with database deletion

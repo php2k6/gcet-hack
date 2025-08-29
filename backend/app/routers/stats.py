@@ -103,10 +103,11 @@ def get_issue_statistics(
     # Initialize status distribution
     status_dist = StatusDistribution()
     status_mapping = {
-        0: 'open',
-        1: 'in_progress', 
-        2: 'resolved',
-        3: 'closed'
+        0: 'posted',
+        1: 'under_review', 
+        2: 'in progress',
+        3: 'resolved',
+        4: 'verified'
     }
     
     for status_val, count in status_counts:

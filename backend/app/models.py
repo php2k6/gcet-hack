@@ -79,10 +79,12 @@ class Media(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     issue_id = Column(UUID(as_uuid=True), ForeignKey("issues.id"), nullable=False)
-    path = Column(String(500), nullable=False)  # File path or URL
+    path = Column(String(500), nullable=False)  # File path or Azure Blob URL
+    blob_name = Column(String(500), nullable=True)  # Azure blob name for deletion
     filename = Column(String(255), nullable=True)  # Original filename
     file_size = Column(BigInteger, nullable=True)  # Size in bytes
     file_type = Column(String(50), nullable=True)  # MIME type
+    storage_type = Column(String(20), default="azure_blob")  # "local" or "azure_blob"
     created_at = Column(DateTime, default=func.now())
     
     # Relationships

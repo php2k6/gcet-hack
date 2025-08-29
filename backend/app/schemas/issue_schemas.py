@@ -15,10 +15,12 @@ class VoteResponse(BaseModel):
 class MediaResponse(BaseModel):
     id: UUID4
     issue_id: UUID4
-    path: str
+    path: str  # Azure Blob URL or local path
+    blob_name: Optional[str] = Field(None, description="Azure blob name for management")
     filename: Optional[str] = Field(None, description="Original filename")
     file_size: Optional[int] = Field(None, description="File size in bytes")
     file_type: Optional[str] = Field(None, description="MIME type")
+    storage_type: Optional[str] = Field("azure_blob", description="Storage type: local or azure_blob")
     created_at: Optional[datetime] = Field(None, description="Upload timestamp")
     
     class Config:
