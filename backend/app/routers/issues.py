@@ -90,6 +90,26 @@ def create_issue_response(issue: Issue) -> IssueResponse:
         vote_count=vote_count
     )
 
+# gets the authority by distrcit name and category 
+
+def get_authority(category: str, district: str, db: Session) -> str: 
+    
+    try:
+        authority = db.query(Authority).filter(
+            Authority.category == category,
+            Authority.district == district
+        ).first()
+        
+        if not authority:
+            raise Exception(f"No authority found for category '{category}' in district '{district}'")
+        
+        return str(authority.id)
+    
+    except Exception as e:
+        raise Exception(f"Error getting authority ID: {str(e)}")
+
+
+
 def check_issue_edit_permission(current_user: User, issue: Issue):
     """Check if user has permission to edit/delete issue"""
     # Admin can edit any issue
