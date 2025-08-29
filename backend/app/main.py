@@ -47,6 +47,7 @@ app.include_router(issues.router, prefix="/api")
 app.include_router(authorities.router, prefix="/api")
 app.include_router(votes.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
+app.include_router(heatmap.router, prefix="/api")
 
 @app.get("/")
 def root():

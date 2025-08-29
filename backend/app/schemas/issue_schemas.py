@@ -104,3 +104,13 @@ class IssueListResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+# Heatmap schemas
+class HeatmapIssueResponse(BaseModel):
+    title: str
+    location: str
+    priority: int
+    status: int
+    
+    class Config:
+        from_attributes = True
