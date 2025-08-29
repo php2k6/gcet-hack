@@ -155,9 +155,9 @@ export default function HeroSection() {
             className="absolute inset-0 z-20 flex flex-col items-center justify-center opacity-0"
           >
             <h1 className="text-primary text-center text-4xl font-bold drop-shadow-lg md:text-6xl lg:text-7xl dark:text-yellow-300">
-              CitiSevak Gujarat
+              CitiSevak 
             </h1>
-            <p className="mt-4 max-w-2xl text-center text-lg text-gray-600 drop-shadow-md md:text-xl lg:text-2xl dark:text-gray-300">
+            <p className="mt-4 max-w-2xl text-center text-lg text-blue-900 drop-shadow-md md:text-xl lg:text-2xl dark:text-gray-300">
               Transparent · Accountable · People-Centric
             </p>
           </div>

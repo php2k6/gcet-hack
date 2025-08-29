@@ -1,6 +1,5 @@
 import React from "react";
 import { useState, useRef } from "react";
-import { useState, useRef } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import MapLocationPicker from "../components/MapLocationPicker";

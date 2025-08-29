@@ -14,7 +14,7 @@ import usericon from "../assets/user.png"
 
 import logo from "../assets/logo.svg";
 import logodark from "../assets/logo-dark.svg";
-import { Bell, CheckCircle, AlertCircle } from "lucide-react";
+import { Bell, CheckCircle, AlertCircle, User } from "lucide-react";
 
 const Navigation = () => {
   const { mode } = useThemeMode();
@@ -22,7 +22,10 @@ const Navigation = () => {
   const linksRef = useRef([]);
   const navbarRef = useRef([]);
   const location = useLocation();
-  const loggedIn = localStorage.getItem("loggedIn") === "true";
+  
+  // Check for user data instead of loggedIn flag
+  const userData = JSON.parse(localStorage.getItem("user_data") || "null");
+  const isLoggedIn = userData !== null;
   // 
 
   var hasnoti = true;
@@ -100,7 +103,7 @@ const Navigation = () => {
       <div className="flex items-center space-x-2 md:order-2">
         <div className="group relative inline-block">
           
-          <Link to={"/notifications"} className="relative">
+           <Link to={"/notifications"} className="relative">
             {/* Bell Icon */}
             <svg
               className="h-6 w-6 cursor-pointer text-gray-800 hover:text-orange-500 dark:text-white dark:hover:text-orange-500"
@@ -134,15 +137,30 @@ const Navigation = () => {
             )}
           </Link>
         </div>
-        <Button
-          as={NavLink}
-          to="/signup"
-          color="primary"
-          className="primary-btn text-white hover:text-black dark:bg-orange-500 dark:text-black dark:text-white dark:hover:bg-orange-500 dark:hover:text-black"
-          // className="rounded-lg px-4 py-2 hover:bg-blue-700 hover:text-yellow-300"
-        >
-          Signup
-        </Button>
+        
+        {/* Conditional rendering based on user data */}
+        {isLoggedIn ? (
+          /* Profile Icon for signed in users */
+          <div className="group relative inline-block">
+            <Link to="/profile" className="relative">
+              <User className="h-6 w-6 cursor-pointer text-gray-800 hover:text-orange-500 dark:text-white dark:hover:text-orange-500" />
+              <span className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black px-2 py-1 text-xs whitespace-nowrap text-white group-hover:block dark:bg-white dark:text-black">
+                View Profile
+              </span>
+            </Link>
+          </div>
+        ) : (
+          /* Signup Button for non-signed in users */
+          <Button
+            as={NavLink}
+            to="/signup"
+            color="primary"
+            className="primary-btn text-white hover:text-black dark:bg-orange-500 dark:text-white dark:hover:bg-orange-500 dark:hover:text-black"
+          >
+            Signup
+          </Button>
+        )}
+        
         <DarkThemeToggle />
         <NavbarToggle />
       </div>

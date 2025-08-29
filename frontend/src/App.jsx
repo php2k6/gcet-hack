@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
 import Notification from "./pages/Notification";
+import NewIssue from "./pages/NewIssue";
 
 const GOOGLE_CLIENT_ID = "233711984336-lmlqdbhcc7uksgusqchb4envpb6224f8.apps.googleusercontent.com";
 
@@ -99,9 +100,9 @@ export default function App() {
               <Route path="/complaints" element={<Complaints />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/report" element={<Report />} />
+              <Route path="/report/:id" element={<Report />} />
               <Route path="/profile" element={<Profile />} />
-              {/* <Route path="/complaints/new" element={<NewComplaint />} /> */}
+              <Route path="/complaints/new" element={<NewIssue />} />
               <Route path="/notifications" element={<Notification />} />
               <Route path="/complaints/:id" element={<ComplaintDetails />} />
               <Route path="*" element={<NotFound />} />

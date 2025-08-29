@@ -74,45 +74,15 @@ const Complaints = () => {
       sort_by: 'created_at',
       sort_order: 'desc'
     });
-    setAllIssues([]); // Reset accumulated issues when filters change
   };
 
   const { data: issuesData, isLoading, error } = useGetAllIssues(queryParams, { 
-    enabled: true,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 10, // 10 minutes
+    enabled: true 
   });
   
   const issues = issuesData?.issues || [];
   const hasMore = issuesData?.has_more || false;
   const totalCount = issuesData?.total || 0;
-  
-  // For proper pagination, we need to accumulate results
-  const [allIssues, setAllIssues] = useState([]);
-  
-  // Update accumulated issues when new data comes in
-  React.useEffect(() => {
-    if (issuesData?.issues) {
-      if (queryParams.page === 1) {
-        // First page - replace all issues
-        setAllIssues(issuesData.issues);
-      } else {
-        // Subsequent pages - append to existing issues
-        setAllIssues(prev => [...prev, ...issuesData.issues]);
-      }
-    }
-  }, [issuesData, queryParams.page]);
-
-  // Reset accumulated issues when filters change (except page)
-  React.useEffect(() => {
-    setAllIssues([]);
-  }, [queryParams.search, queryParams.district, queryParams.category, queryParams.status, queryParams.sort_by, queryParams.sort_order]);
-
-  const loadMore = () => {
-    if (hasMore && !isLoading) {
-      setQueryParams(prev => ({ ...prev, page: prev.page + 1 }));
-    }
-  };
 
   const getStatusBadge = (status) => {
     const badges = {
@@ -142,6 +112,12 @@ const Complaints = () => {
       'Low': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
     };
     return `px-2 py-1 text-xs font-medium rounded-full ${badges[priority] || badges['Medium']}`;
+  };
+
+  const loadMore = () => {
+    if (hasMore && !isLoading) {
+      setQueryParams(prev => ({ ...prev, page: prev.page + 1 }));
+    }
   };
 
   return (
@@ -293,7 +269,7 @@ const Complaints = () => {
           )}
 
           {/* Empty State */}
-          {!isLoading && !error && allIssues.length === 0 && (
+          {!isLoading && !error && issues.length === 0 && (
             <div className="text-center py-12">
               <AlertCircle className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No complaints found</h3>
@@ -302,9 +278,9 @@ const Complaints = () => {
           )}
 
           {/* Issues Grid */}
-          {!error && allIssues.length > 0 && (
+          {!error && issues.length > 0 && (
             <div ref={complaintsRef} className="space-y-6">
-              {allIssues.map((issue) => (
+              {issues.map((issue) => (
                 <ComplaintCard 
                   key={issue.id} 
                   complaint={issue}

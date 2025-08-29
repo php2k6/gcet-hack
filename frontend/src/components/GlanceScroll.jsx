@@ -133,7 +133,7 @@ const GlanceScroll = () => {
             {/* Horizontal scroll container */}
             <section ref={slider} className="flex overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800" style={{ willChange: 'transform' }}>
                 {/* Header */}
-                <div className="absolute top- left-0 right-0 z-20 bg-black/20 backdrop-blur-sm">
+                <div className="absolute top-0 left-0 right-0 z-20 bg-black/20 backdrop-blur-sm">
                     <div className="flex items-center justify-between p-6">
                         <div>
                             <h2 className="text-3xl font-bold text-white">CitiSevak at a Glance</h2>
@@ -155,7 +155,7 @@ const GlanceScroll = () => {
                     </div>
                 </div>
                 {cards.map((card, index) => (
-                    <div key={card.id} className="panel min-w-full h-screen flex items-center relative" style={{ willChange: 'transform' }}>
+                    <div key={card.id} className=" panel min-w-full h-[90%] flex items-center relative" style={{ willChange: 'transform' }}>
 
 
                         {/* Content */}

@@ -43,13 +43,19 @@ export const useCreateIssue = () => {
   });
 };
 
-export const useGetAllIssues = (params = {}) => {
+export const useGetAllIssues = (params = {}, options = {}) => {
+  // Filter out empty values from params
+  const cleanParams = Object.fromEntries(
+    Object.entries(params).filter(([key, value]) => 
+      value !== null && value !== undefined && value !== ''
+    )
+  );
+
   return useQuery({
-    queryKey: ['issues', 'all', params],
-    queryFn: () => issuesAPI.getAllIssues(params),
+    queryKey: ['issues', 'all', cleanParams],
+    queryFn: () => issuesAPI.getAllIssues(cleanParams),
     keepPreviousData: true,
-    // Ensure query is enabled and refetch when params change
-    enabled: true,
+    ...options,
   });
 };
 
@@ -61,6 +67,16 @@ export const useGetIssueById = (issueId) => {
     queryKey: ['issues', issueId],
     queryFn: () => issuesAPI.getIssueById(issueId),
     enabled: !!issueId,
+    retry: (failureCount, error) => {
+      // Don't retry on 404 errors
+      if (error?.response?.status === 404) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+    onError: (error) => {
+      console.error('Error fetching issue:', error);
+    }
   });
 };
 

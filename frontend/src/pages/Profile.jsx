@@ -1,11 +1,78 @@
-import React from 'react'
-import { useGetMe } from '../api/user';
+import React, { useState } from 'react'
+import { useGetMe, useUpdateMe, useGetUserIssues } from '../api/user';
+import Toast from '../components/Toast';
+import { getUserProfileImage } from '../utils/googleUtils';
+
 const Profile = () => {
     const accessToken = localStorage.getItem("access_token");
-    const profilePhoto = localStorage.getItem("profile_photo");
+    const googleIdToken = localStorage.getItem("google_id_token");
+    
+    console.log('Profile component - localStorage debug:');
+    console.log('  google_id_token exists:', !!googleIdToken);
+    console.log('  google_id_token length:', googleIdToken?.length);
+    console.log('  profile_photo exists:', !!localStorage.getItem("profile_photo"));
 
     // get user details from usegetme hook
     const { data: user, isLoading } = useGetMe();
+    const updateMutation = useUpdateMe();
+    
+    // get user issues
+    const { data: userIssues, isLoading: isIssuesLoading, error: issuesError } = useGetUserIssues(user?.id);
+    
+    console.log('Profile component - user debug:');
+    console.log('  user loaded:', !!user);
+    console.log('  user.is_google:', user?.is_google);
+    console.log('  user.name:', user?.name);
+    
+    // Get profile image with Google fallback
+    const profileImage = user ? getUserProfileImage(user, googleIdToken) : null;
+    
+    // State for profile image to force re-render when it changes
+    const [currentProfileImage, setCurrentProfileImage] = useState(profileImage);
+    
+    // Update profile image when user data or tokens change
+    React.useEffect(() => {
+        if (user) {
+            const newProfileImage = getUserProfileImage(user, googleIdToken);
+            setCurrentProfileImage(newProfileImage);
+        }
+    }, [user, googleIdToken]);
+    
+    // Listen for profile image updates
+    React.useEffect(() => {
+        const handleProfileImageUpdate = (event) => {
+            setCurrentProfileImage(event.detail);
+        };
+        
+        window.addEventListener('profileImageUpdated', handleProfileImageUpdate);
+        
+        return () => {
+            window.removeEventListener('profileImageUpdated', handleProfileImageUpdate);
+        };
+    }, []);
+    
+    // Form state for editing user details
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [formData, setFormData] = useState({
+        name: '',
+        phone: '',
+        district: ''
+    });
+    const [errors, setErrors] = useState({});
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    
+    // Update form data when user data is loaded
+    React.useEffect(() => {
+        if (user) {
+            setFormData({
+                name: user.name || '',
+                phone: user.phone || '',
+                district: user.district || ''
+            });
+        }
+    }, [user]);
+    
     const createdAt = user?.created_at;
     const district = user?.district;
     const email = user?.email;
@@ -16,71 +83,216 @@ const Profile = () => {
     const phone = user?.phone;
     const role = user?.role;
 
-// ""
-// email
-// : 
-// "thakurhitansh4325@gmail.com"
-// google_id
-// : 
-// "109061682985649239604"
-// id
-// : 
-// "c90c389d-0f37-4bb2-89aa-2f29b91c8672"
-// is_google
-// : 
-// true
-// name
-// : 
-// "Hitansh Thakur"
-// phone
-// : 
-// ""
-// role
-// : 
-// 0
+    // Handle form input changes
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        // Clear error for this field
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
+        }
+    };
+
+    // Validate form data
+    const validateForm = () => {
+        const newErrors = {};
+        
+        if (!formData.name.trim()) {
+            newErrors.name = 'Name is required';
+        } else if (formData.name.trim().length < 2) {
+            newErrors.name = 'Name must be at least 2 characters long';
+        }
+        
+        if (formData.phone && !/^\+?[\d\s\-\(\)]{10,}$/.test(formData.phone)) {
+            newErrors.phone = 'Please enter a valid phone number';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    // Handle form submission
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!validateForm()) {
+            return;
+        }
+        
+        setIsUpdating(true);
+        
+        try {
+            // Only send fields that have changed
+            const updateData = {};
+            if (formData.name !== user.name) updateData.name = formData.name;
+            if (formData.phone !== user.phone) updateData.phone = formData.phone;
+            if (formData.district !== user.district) updateData.district = formData.district;
+            
+            if (Object.keys(updateData).length > 0) {
+                await updateMutation.mutateAsync(updateData);
+                setIsModalOpen(false);
+                setToast({ show: true, message: 'Profile updated successfully!', type: 'success' });
+            } else {
+                setIsModalOpen(false);
+                setToast({ show: true, message: 'No changes were made.', type: 'info' });
+            }
+        } catch (error) {
+            console.error('Update failed:', error);
+            setToast({ show: true, message: 'Failed to update profile. Please try again.', type: 'error' });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    // Handle modal open
+    const openEditModal = () => {
+        if (user) {
+            setFormData({
+                name: user.name || '',
+                phone: user.phone || '',
+                district: user.district || ''
+            });
+            setErrors({});
+            setIsModalOpen(true);
+        }
+    };
+
+    // Handle modal close
+    const closeEditModal = () => {
+        setIsModalOpen(false);
+        setErrors({});
+    };
+
     console.log(user);
+
+    // Helper functions for issues
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 0:
+                return {
+                    color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+                    text: 'Open'
+                };
+            case 1:
+                return {
+                    color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                    text: 'In Progress'
+                };
+            case 2:
+                return {
+                    color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                    text: 'Resolved'
+                };
+            default:
+                return {
+                    color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+                    text: 'Unknown'
+                };
+        }
+    };
+
+    const getPriorityBadge = (priority) => {
+        switch (priority) {
+            case 0:
+                return {
+                    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+                    text: 'Low'
+                };
+            case 1:
+                return {
+                    color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                    text: 'Medium'
+                };
+            case 2:
+                return {
+                    color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
+                    text: 'High'
+                };
+            case 3:
+                return {
+                    color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+                    text: 'Critical'
+                };
+            default:
+                return {
+                    color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+                    text: 'Unknown'
+                };
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-8">
+                <div className="mx-auto max-w-screen-lg px-4 2xl:px-0">
+                    <div className="flex justify-center items-center py-8">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                        <span className="ml-3 text-gray-600 dark:text-gray-400">Loading profile...</span>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
+    if (!user) {
+        return (
+            <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-8">
+                <div className="mx-auto max-w-screen-lg px-4 2xl:px-0">
+                    <div className="flex justify-center items-center py-8">
+                        <span className="text-gray-600 dark:text-gray-400">Unable to load profile data.</span>
+                    </div>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-8">
-            <div className="mx-auto max-w-screen-lg px-4 2xl:px-0">
+            <div className="mx-auto max-w-screen-md px-4 2xl:px-0">
                 {/* User Details */}
                 <div className="py-4 md:py-8">
                     <div className="mb-4 grid gap-4 sm:grid-cols-2 sm:gap-8 lg:gap-16">
                         <div className="space-y-4">
                             <div className="flex space-x-4">
-                                <img className="h-16 w-16 rounded-lg" src="https://flowbite.s3.amazonaws.com/blocks/marketing-ui/avatars/helene-engels.png" alt="Helene avatar" />
-                                    <h2 className="flex items-center text-xl font-bold leading-none text-gray-900 dark:text-white sm:text-2xl">Helene Engels</h2>
+                                
+                                <h2 className="flex items-center text-xl font-bold leading-none text-gray-900 dark:text-white sm:text-2xl">{name || 'User'}</h2>
                             </div>
                             <dl className="">
                                 <dt className="font-semibold text-gray-900 dark:text-white">Email Address</dt>
                                 <dd className="text-gray-500 dark:text-gray-400">{email}</dd>
                             </dl>
                             <dl>
-                                <dt className="font-semibold text-gray-900 dark:text-white">Home Address</dt>
+                                <dt className="font-semibold text-gray-900 dark:text-white">District</dt>
                                 <dd className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                                     <svg className="hidden h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500 lg:inline" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="m4 12 8-8 8 8M6 10.5V19a1 1 0 0 0 1 1h3v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h3a1 1 0 0 0 1-1v-8.5" />
                                     </svg>
-                                    2 Miles Drive, NJ 071, New York, United States of America
+                                    {district || 'Not specified'}
                                 </dd>
                             </dl>
                             <dl>
-                                <dt className="font-semibold text-gray-900 dark:text-white">Delivery Address</dt>
+                                <dt className="font-semibold text-gray-900 dark:text-white">Account Type</dt>
                                 <dd className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                                     <svg className="hidden h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500 lg:inline" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M13 7h6l2 4m-8-4v8m0-8V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9h2m8 0H9m4 0h2m4 0h2v-4m0 0h-5m3.5 5.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Zm-10 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z" />
                                     </svg>
-                                    9th St. PATH Station, New York, United States of America
+                                    {isGoogle ? 'Google Account' : 'Regular Account'}
                                 </dd>
                             </dl>
                         </div>
                         <div className="space-y-4">
                             <dl>
                                 <dt className="font-semibold text-gray-900 dark:text-white">Phone Number</dt>
-                                <dd className="text-gray-500 dark:text-gray-400">+1234 567 890 / +12 345 678</dd>
+                                <dd className="text-gray-500 dark:text-gray-400">{phone || 'Not provided'}</dd>
                             </dl>
                             <dl>
-                                <dt className="font-semibold text-gray-900 dark:text-white">Favorite pick-up point</dt>
+                                <dt className="font-semibold text-gray-900 dark:text-white">Member Since</dt>
                                 <dd className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                                     <svg className="hidden h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500 lg:inline" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                         <path
@@ -88,184 +300,157 @@ const Profile = () => {
                                             stroke-linecap="round"
                                             stroke-linejoin="round"
                                             strokeWidth="2"
-                                            d="M6 12c.263 0 .524-.06.767-.175a2 2 0 0 0 .65-.491c.186-.21.333-.46.433-.734.1-.274.15-.568.15-.864a2.4 2.4 0 0 0 .586 1.591c.375.422.884.659 1.414.659.53 0 1.04-.237 1.414-.659A2.4 2.4 0 0 0 12 9.736a2.4 2.4 0 0 0 .586 1.591c.375.422.884.659 1.414.659.53 0 1.04-.237 1.414-.659A2.4 2.4 0 0 0 16 9.736c0 .295.052.588.152.861s.248.521.434.73a2 2 0 0 0 .649.488 1.809 1.809 0 0 0 1.53 0 2.03 2.03 0 0 0 .65-.488c.185-.209.332-.457.433-.73.1-.273.152-.566.152-.861 0-.974-1.108-3.85-1.618-5.121A.983.983 0 0 0 17.466 4H6.456a.986.986 0 0 0-.93.645C5.045 5.962 4 8.905 4 9.736c.023.59.241 1.148.611 1.567.37.418.865.667 1.389.697Zm0 0c.328 0 .651-.091.94-.266A2.1 2.1 0 0 0 7.66 11h.681a2.1 2.1 0 0 0 .718.734c.29.175.613.266.942.266.328 0 .651-.091.94-.266.29-.174.537-.427.719-.734h.681a2.1 2.1 0 0 0 .719.734c.289.175.612.266.94.266.329 0 .652-.091.942-.266.29-.174.536-.427.718-.734h.681c.183.307.43.56.719.734.29.174.613.266.941.266a1.819 1.819 0 0 0 1.06-.351M6 12a1.766 1.766 0 0 1-1.163-.476M5 12v7a1 1 0 0 0 1 1h2v-5h3v5h7a1 1 0 0 0 1-1v-7m-5 3v2h2v-2h-2Z"
+                                            d="M4 10h16m-8-3V4M7 7V4m10 3V4M5 20h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Zm3-7h.01v.01H8V13Zm4 0h.01v.01H12V13Zm4 0h.01v.01H16V13Zm-8 4h.01v.01H8V17Zm4 0h.01v.01H12V17Zm4 0h.01v.01H16V17Z"
                                         />
                                     </svg>
-                                    Herald Square, 2, New York, United States of America
+                                    {createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown'}
                                 </dd>
                             </dl>
-                            
+                            <dl>
+                                <dt className="font-semibold text-gray-900 dark:text-white">User Role</dt>
+                                <dd className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                    <svg className="hidden h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500 lg:inline" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                        <path stroke="currentColor" strokeWidth="2" d="M7 17v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1a3 3 0 0 0-3-3h-4a3 3 0 0 0-3 3Zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                                    </svg>
+                                    {role === 0 ? 'Citizen' : role === 1 ? 'Authority' : 'Admin'}
+                                </dd>
+                            </dl>
                         </div>
                     </div>
-                    <button type="button" data-modal-target="accountInformationModal2" data-modal-toggle="accountInformationModal2" className="inline-flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:w-auto">
+                    <button 
+                        type="button" 
+                        onClick={openEditModal}
+                        className="inline-flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:w-auto"
+                    >
                         <svg className="-ms-0.5 me-1.5 h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="m14.304 4.844 2.852 2.852M7 7H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4.5m2.409-9.91a2.017 2.017 0 0 1 0 2.853l-6.844 6.844L8 14l.713-3.565 6.844-6.844a2.015 2.015 0 0 1 2.852 0Z"></path>
                         </svg>
                         Edit your data
                     </button>
                 </div>
-                <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white sm:text-2xl md:mb-6">General overview</h2>
-                <div className="grid grid-cols-2 gap-6 border-b border-t border-gray-200 py-4 dark:border-gray-700 md:py-8 lg:grid-cols-4 xl:gap-16">
-                    <div>
-                        <svg className="mb-2 h-8 w-8 text-gray-400 dark:text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M5 4h1.5L9 16m0 0h8m-8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm-8.5-3h9.25L19 7H7.312" />
-                        </svg>
-                        <h3 className="mb-2 text-gray-500 dark:text-gray-400">Orders made</h3>
-                        <span className="flex items-center text-2xl font-bold text-gray-900 dark:text-white"
-                        >24
-                            <span className="ms-2 inline-flex items-center rounded bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                                <svg className="-ms-1 me-1 h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M12 6v13m0-13 4 4m-4-4-4 4"></path>
-                                </svg>
-                                10.3%
-                            </span>
-                        </span>
-                        <p className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 sm:text-base">
-                            <svg className="me-1.5 h-4 w-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                            vs 20 last 3 months
-                        </p>
-                    </div>
-                    <div>
-                        <svg className="mb-2 h-8 w-8 text-gray-400 dark:text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                            <path stroke="currentColor" strokeWidth="2" d="M11.083 5.104c.35-.8 1.485-.8 1.834 0l1.752 4.022a1 1 0 0 0 .84.597l4.463.342c.9.069 1.255 1.2.556 1.771l-3.33 2.723a1 1 0 0 0-.337 1.016l1.03 4.119c.214.858-.71 1.552-1.474 1.106l-3.913-2.281a1 1 0 0 0-1.008 0L7.583 20.8c-.764.446-1.688-.248-1.474-1.106l1.03-4.119A1 1 0 0 0 6.8 14.56l-3.33-2.723c-.698-.571-.342-1.702.557-1.771l4.462-.342a1 1 0 0 0 .84-.597l1.753-4.022Z" />
-                        </svg>
-                        <h3 className="mb-2 text-gray-500 dark:text-gray-400">Reviews added</h3>
-                        <span className="flex items-center text-2xl font-bold text-gray-900 dark:text-white"
-                        >16
-                            <span className="ms-2 inline-flex items-center rounded bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                                <svg className="-ms-1 me-1 h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M12 6v13m0-13 4 4m-4-4-4 4"></path>
-                                </svg>
-                                8.6%
-                            </span>
-                        </span>
-                        <p className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 sm:text-base">
-                            <svg className="me-1.5 h-4 w-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                            vs 14 last 3 months
-                        </p>
-                    </div>
-                    <div>
-                        <svg className="mb-2 h-8 w-8 text-gray-400 dark:text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M12.01 6.001C6.5 1 1 8 5.782 13.001L12.011 20l6.23-7C23 8 17.5 1 12.01 6.002Z" />
-                        </svg>
-                        <h3 className="mb-2 text-gray-500 dark:text-gray-400">Favorite products added</h3>
-                        <span className="flex items-center text-2xl font-bold text-gray-900 dark:text-white"
-                        >8
-                            <span className="ms-2 inline-flex items-center rounded bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">
-                                <svg className="-ms-1 me-1 h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M12 6v13m0-13 4 4m-4-4-4 4"></path>
-                                </svg>
-                                12%
-                            </span>
-                        </span>
-                        <p className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 sm:text-base">
-                            <svg className="me-1.5 h-4 w-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                            vs 10 last 3 months
-                        </p>
-                    </div>
-                    <div>
-                        <svg className="mb-2 h-8 w-8 text-gray-400 dark:text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M3 9h13a5 5 0 0 1 0 10H7M3 9l4-4M3 9l4 4" />
-                        </svg>
-                        <h3 className="mb-2 text-gray-500 dark:text-gray-400">Product returns</h3>
-                        <span className="flex items-center text-2xl font-bold text-gray-900 dark:text-white"
-                        >2
-                            <span className="ms-2 inline-flex items-center rounded bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                                <svg className="-ms-1 me-1 h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M12 6v13m0-13 4 4m-4-4-4 4"></path>
-                                </svg>
-                                50%
-                            </span>
-                        </span>
-                        <p className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 sm:text-base">
-                            <svg className="me-1.5 h-4 w-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                            vs 1 last 3 months
-                        </p>
-                    </div>
-                </div>
+                
                 
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800 md:p-8">
-                    <h3 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">Latest orders</h3>
-                    <div className="flex flex-wrap items-center gap-y-4 border-b border-gray-200 pb-4 dark:border-gray-700 md:pb-5">
-                        <dl className="w-1/2 sm:w-48">
-                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Order ID:</dt>
-                            <dd className="mt-1.5 text-base font-semibold text-gray-900 dark:text-white">
-                                <a href="#" className="hover:underline">#FWB12546798</a>
-                            </dd>
-                        </dl>
-
-                        <dl className="w-1/2 sm:w-1/4 md:flex-1 lg:w-auto">
-                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Date:</dt>
-                            <dd className="mt-1.5 text-base font-semibold text-gray-900 dark:text-white">11.12.2023</dd>
-                        </dl>
-
-                        <dl className="w-1/2 sm:w-1/5 md:flex-1 lg:w-auto">
-                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Price:</dt>
-                            <dd className="mt-1.5 text-base font-semibold text-gray-900 dark:text-white">$499</dd>
-                        </dl>
-
-                        <dl className="w-1/2 sm:w-1/4 sm:flex-1 lg:w-auto">
-                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Status:</dt>
-                            <dd className="me-2 mt-1.5 inline-flex shrink-0 items-center rounded bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                                <svg className="me-1 h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M13 7h6l2 4m-8-4v8m0-8V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9h2m8 0H9m4 0h2m4 0h2v-4m0 0h-5m3.5 5.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Zm-10 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z"></path>
-                                </svg>
-                                In transit
-                            </dd>
-                        </dl>
-
-                        <div className="w-full sm:flex sm:w-32 sm:items-center sm:justify-end sm:gap-4">
-                            <button
-                                id="actionsMenuDropdownModal10"
-                                data-dropdown-toggle="dropdownOrderModal10"
-                                type="button"
-                                className="flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700 md:w-auto"
-                            >
-                                Actions
-                                <svg className="-me-0.5 ms-1.5 h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="m19 9-7 7-7-7"></path>
-                                </svg>
-                            </button>
-                            <div id="dropdownOrderModal10" className="z-10 hidden w-40 divide-y divide-gray-100 rounded-lg bg-white shadow dark:bg-gray-700" data-popper-reference-hidden="" data-popper-escaped="" data-popper-placement="bottom">
-                                <ul className="p-2 text-left text-sm font-medium text-gray-500 dark:text-gray-400" aria-labelledby="actionsMenuDropdown10">
-                                    <li>
-                                        <a href="#" className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white">
-                                            <svg className="me-1.5 h-4 w-4 text-gray-400 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M17.651 7.65a7.131 7.131 0 0 0-12.68 3.15M18.001 4v4h-4m-7.652 8.35a7.13 7.13 0 0 0 12.68-3.15M6 20v-4h4"></path>
-                                            </svg>
-                                            <span>Order again</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="#" className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white">
-                                            <svg className="me-1.5 h-4 w-4 text-gray-400 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="currentColor" strokeWidth="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"></path>
-                                                <path stroke="currentColor" strokeWidth="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path>
-                                            </svg>
-                                            Order details
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="#" data-modal-target="deleteOrderModal" data-modal-toggle="deleteOrderModal" className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">
-                                            <svg className="me-1.5 h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"></path>
-                                            </svg>
-                                            Cancel order
-                                        </a>
-                                    </li>
-                                </ul>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">My Issues</h3>
+                        {userIssues && userIssues.length > 0 && (
+                            <div className="flex gap-4 text-sm">
+                                <span className="text-gray-600 dark:text-gray-400">
+                                    Total: <span className="font-semibold">{userIssues.length}</span>
+                                </span>
+                                <span className="text-red-600 dark:text-red-400">
+                                    Open: <span className="font-semibold">{userIssues.filter(issue => issue.status === 0).length}</span>
+                                </span>
+                                <span className="text-yellow-600 dark:text-yellow-400">
+                                    In Progress: <span className="font-semibold">{userIssues.filter(issue => issue.status === 1).length}</span>
+                                </span>
+                                <span className="text-green-600 dark:text-green-400">
+                                    Resolved: <span className="font-semibold">{userIssues.filter(issue => issue.status === 2).length}</span>
+                                </span>
                             </div>
-                        </div>
+                        )}
                     </div>
                     
+                    {isIssuesLoading ? (
+                        <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+                            <span className="ml-2 text-gray-600 dark:text-gray-400">Loading issues...</span>
+                        </div>
+                    ) : issuesError ? (
+                        <div className="flex items-center justify-center p-8">
+                            <div className="text-center">
+                                <svg className="mx-auto h-12 w-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p className="mt-2 text-sm text-red-600 dark:text-red-400">Failed to load issues</p>
+                            </div>
+                        </div>
+                    ) : !userIssues || userIssues.length === 0 ? (
+                        <div className="flex items-center justify-center p-8">
+                            <div className="text-center">
+                                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">No issues reported yet</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-500">Your reported issues will appear here</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {userIssues.map((issue, index) => {
+                                const statusBadge = getStatusBadge(issue.status);
+                                const priorityBadge = getPriorityBadge(issue.priority);
+                                
+                                return (
+                                    <div key={issue.id} className="flex flex-wrap items-center gap-y-4 border-b border-gray-200 pb-4 dark:border-gray-700 md:pb-5 last:border-b-0">
+                                        <dl className="w-1/2 sm:w-48">
+                                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Issue #{index + 1}:</dt>
+                                            <dd className="mt-1.5 text-base font-semibold text-gray-900 dark:text-white">
+                                                <span className="hover:underline cursor-pointer" title={issue.description}>
+                                                    {issue.title.length > 30 ? `${issue.title.substring(0, 30)}...` : issue.title}
+                                                </span>
+                                            </dd>
+                                        </dl>
+
+                                        <dl className="w-1/2 sm:w-1/4 md:flex-1 lg:w-auto">
+                                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Date:</dt>
+                                            <dd className="mt-1.5 text-base font-semibold text-gray-900 dark:text-white">
+                                                {new Date(issue.created_at).toLocaleDateString()}
+                                            </dd>
+                                        </dl>
+
+                                        <dl className="w-1/2 sm:w-1/5 md:flex-1 lg:w-auto">
+                                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Category:</dt>
+                                            <dd className="mt-1.5 text-base font-semibold text-gray-900 dark:text-white">
+                                                {issue.category || 'General'}
+                                            </dd>
+                                        </dl>
+
+                                        <dl className="w-1/2 sm:w-1/4 md:flex-1 lg:w-auto">
+                                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Priority:</dt>
+                                            <dd className="mt-1.5">
+                                                <span className={`inline-flex shrink-0 items-center rounded px-2.5 py-0.5 text-xs font-medium ${priorityBadge.color}`}>
+                                                    {priorityBadge.text}
+                                                </span>
+                                            </dd>
+                                        </dl>
+
+                                        <dl className="w-1/2 sm:w-1/4 sm:flex-1 lg:w-auto">
+                                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Status:</dt>
+                                            <dd className="mt-1.5">
+                                                <span className={`inline-flex shrink-0 items-center rounded px-2.5 py-0.5 text-xs font-medium ${statusBadge.color}`}>
+                                                    <svg className="me-1 h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 11.917 9.724 16.5 19 7.5"></path>
+                                                    </svg>
+                                                    {statusBadge.text}
+                                                </span>
+                                            </dd>
+                                        </dl>
+
+                                        <dl className="w-1/2 sm:w-1/4 md:flex-1 lg:w-auto">
+                                            <dt className="text-base font-medium text-gray-500 dark:text-gray-400">Votes:</dt>
+                                            <dd className="mt-1.5 text-base font-semibold text-gray-900 dark:text-white">
+                                                {issue.vote_count || 0}
+                                            </dd>
+                                        </dl>
+
+                                        <div className="w-full sm:flex sm:w-32 sm:items-center sm:justify-end sm:gap-4">
+                                            <div className="text-right">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                    Last updated: {new Date(issue.updated_at).toLocaleDateString()}
+                                                </p>
+                                                {issue.authority && (
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                        Assigned to: {issue.authority.name}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
             {/* <!-- Account Information Modal --> */}
@@ -592,6 +777,151 @@ const Profile = () => {
             </div>
 
             
+            {/* Edit User Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-black bg-opacity-50">
+                    <div className="relative max-h-full w-full max-w-md p-4">
+                        {/* Modal content */}
+                        <div className="relative rounded-lg bg-white shadow dark:bg-gray-800">
+                            {/* Modal header */}
+                            <div className="flex items-center justify-between rounded-t border-b border-gray-200 p-4 dark:border-gray-700 md:p-5">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Edit Profile Information
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={closeEditModal}
+                                    className="ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
+                                >
+                                    <svg className="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
+                                    </svg>
+                                    <span className="sr-only">Close modal</span>
+                                </button>
+                            </div>
+                            
+                            {/* Modal body */}
+                            <form onSubmit={handleSubmit} className="p-4 md:p-5">
+                                <div className="mb-5 space-y-4">
+                                    {/* Name Field */}
+                                    <div>
+                                        <label htmlFor="name" className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+                                            Full Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="name"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleInputChange}
+                                            className={`block w-full rounded-lg border p-2.5 text-sm focus:ring-2 ${
+                                                errors.name
+                                                    ? 'border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:bg-red-100 dark:text-red-900'
+                                                    : 'border-gray-300 bg-gray-50 text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500'
+                                            }`}
+                                            placeholder="Enter your full name"
+                                            required
+                                        />
+                                        {errors.name && (
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Phone Field */}
+                                    <div>
+                                        <label htmlFor="phone" className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+                                            Phone Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="phone"
+                                            name="phone"
+                                            value={formData.phone}
+                                            onChange={handleInputChange}
+                                            className={`block w-full rounded-lg border p-2.5 text-sm focus:ring-2 ${
+                                                errors.phone
+                                                    ? 'border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:bg-red-100 dark:text-red-900'
+                                                    : 'border-gray-300 bg-gray-50 text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500'
+                                            }`}
+                                            placeholder="Enter your phone number"
+                                        />
+                                        {errors.phone && (
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.phone}</p>
+                                        )}
+                                    </div>
+
+                                    {/* District Field */}
+                                    <div>
+                                        <label htmlFor="district" className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+                                            District
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="district"
+                                            name="district"
+                                            value={formData.district}
+                                            onChange={handleInputChange}
+                                            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+                                            placeholder="Enter your district"
+                                        />
+                                    </div>
+
+                                    {/* Email Field (Read-only) */}
+                                    <div>
+                                        <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-500 dark:text-gray-400">
+                                            Email Address (Cannot be changed)
+                                        </label>
+                                        <input
+                                            type="email"
+                                            id="email"
+                                            value={user?.email || ''}
+                                            className="block w-full rounded-lg border border-gray-300 bg-gray-100 p-2.5 text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-600 dark:text-gray-400"
+                                            disabled
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {/* Action buttons */}
+                                <div className="border-t border-gray-200 pt-4 dark:border-gray-700 md:pt-5">
+                                    <button
+                                        type="submit"
+                                        disabled={isUpdating}
+                                        className={`me-2 inline-flex items-center rounded-lg px-5 py-2.5 text-center text-sm font-medium text-white focus:outline-none focus:ring-4 ${
+                                            isUpdating
+                                                ? 'cursor-not-allowed bg-gray-400 dark:bg-gray-600'
+                                                : 'bg-primary-700 hover:bg-primary-800 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800'
+                                        }`}
+                                    >
+                                        {isUpdating && (
+                                            <svg className="me-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        )}
+                                        {isUpdating ? 'Updating...' : 'Save Changes'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={closeEditModal}
+                                        disabled={isUpdating}
+                                        className="me-2 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <Toast
+                show={toast.show}
+                message={toast.message}
+                type={toast.type}
+                onClose={() => setToast({ show: false, message: '', type: 'success' })}
+            />
+
         </section>
     );
 }

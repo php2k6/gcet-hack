@@ -35,13 +35,20 @@ export default function SignupPage() {
       if (backendResponse.ok) {
         console.log('✅ Google signup successful:', data);
 
-        // fetch google profile photo 
-        
+        // fetch google profile photo using id token
+        const userInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo`, {
+          headers: {
+            'Authorization': `Bearer ${credentialResponse.credential}`
+          }
+        });
+
+        const userInfo = await userInfoResponse.json();
+
         // Store tokens
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('refresh_token', data.refresh_token);
         localStorage.setItem('user_data', JSON.stringify(data.user));
-        localStorage.setItem("user_img", data.user);
+        localStorage.setItem("user_img", userInfo.picture);
 
         setMessage({
           type: "success",
