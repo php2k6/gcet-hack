@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
+import { useSignup } from "../api/auth";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 export default function SignupPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -11,8 +14,19 @@ export default function SignupPage() {
     phone: "",
     district: ""
   });
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [toastMessage, setToastMessage] = useState({ show: false, message: "", type: "success" });
+  
+  // Use the signup hook
+  const signupMutation = useSignup();
+
+  // Toast notification function
+  const showToast = (message, type = "success") => {
+    setToastMessage({ show: true, message, type });
+    setTimeout(() => {
+      setToastMessage({ show: false, message: "", type: "success" });
+    }, 4000);
+  };
 
   // Handle Google Sign-In Success
   const handleGoogleSignup = async (credentialResponse) => {
@@ -44,40 +58,33 @@ export default function SignupPage() {
 
         const userInfo = await userInfoResponse.json();
 
-        // Store tokens
+        // Store tokens and user data (same as Google signup)
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('refresh_token', data.refresh_token);
         localStorage.setItem('user_data', JSON.stringify(data.user));
         localStorage.setItem("user_img", userInfo.picture);
 
-        setMessage({
-          type: "success",
-          text: `Welcome ${data.user.name}! Google signup successful. You are now logged in.`
-        });
+        showToast(`Welcome ${data.user.name}! Google signup successful. Redirecting to home...`, "success");
+        
+        // Redirect to home page after 2 seconds
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
         
       } else {
         console.error('❌ Google signup failed:', data);
-        setMessage({
-          type: "error",
-          text: "Google signup failed."
-        });
+        showToast("Google signup failed. Please try again.", "error");
       }
     } catch (error) {
       console.error('❌ Network error during Google signup:', error);
-      setMessage({
-        type: "error",
-        text: `Network error during Google signup: ${error.message}`
-      });
+      showToast(`Network error during Google signup: ${error.message}`, "error");
     }
   };
 
   // Handle Google Sign-In Error
   const handleGoogleError = () => {
     console.error('Google Sign-In failed');
-    setMessage({
-      type: "error",
-      text: "Google Sign-In failed. Please try again."
-    });
+    showToast("Google Sign-In failed. Please try again.", "error");
   };
 
   const handleChange = (e) => {
@@ -86,42 +93,77 @@ export default function SignupPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setMessage({ type: "", text: "" });
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
-      });
+      // Prepare the form data, ensuring phone is empty string if not provided
+      const signupData = {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        phone: form.phone || "", // Send empty string if phone is not provided
+        district: form.district
+      };
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage({
-          type: "success",
-          text: `Account created successfully for ${data.user.name}. Please login now.`
-        });
-        setForm({ name: "", email: "", password: "", phone: "", district: "" });
-      } else {
-        setMessage({
-          type: "error",
-          text: data.detail || "Signup failed."
-        });
+      const result = await signupMutation.mutateAsync(signupData);
+      
+      // Store user data in localStorage (consistent with Google signup)
+      localStorage.setItem("access_token", result.access_token);
+      localStorage.setItem("user_data", JSON.stringify(result.user));
+      if (result.refresh_token) {
+        localStorage.setItem("refresh_token", result.refresh_token);
       }
-    } catch (err) {
-      setMessage({
-        type: "error",
-        text: `Network error: ${err.message}`
-      });
-    } finally {
-      setLoading(false);
+      
+      showToast(`Welcome ${result.user.name}! Account created successfully. Redirecting to home...`, "success");
+      
+      // Clear form
+      setForm({ name: "", email: "", password: "", phone: "", district: "" });
+      
+      // Redirect to home page after 2 seconds
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
+      
+    } catch (error) {
+      showToast(error.response?.data?.detail || error.message || "Signup failed. Please try again.", "error");
     }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white shadow-md rounded-lg p-6 mt-20">
+    <>
+      {/* Toast Notification */}
+      {toastMessage.show && (
+        <div className={`fixed top-4 right-4 z-50 max-w-sm w-full ${
+          toastMessage.type === "success" 
+            ? "bg-green-500 text-white" 
+            : "bg-red-500 text-white"
+        } p-4 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              {toastMessage.type === "success" ? (
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              )}
+              <span className="text-sm font-medium">{toastMessage.message}</span>
+            </div>
+            <button 
+              onClick={() => setToastMessage({ show: false, message: "", type: "success" })}
+              className="ml-2 text-white hover:text-gray-200"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-md mx-auto bg-white shadow-md rounded-lg p-6 mt-20">
       <h2 className="text-2xl font-bold mb-4">📝 Create New Account</h2>
 
       {message.text && (
@@ -181,15 +223,15 @@ export default function SignupPage() {
 
         <div>
           <label htmlFor="phone" className="block font-medium">
-            Phone:
+            Phone (Optional):
           </label>
           <input
             id="phone"
             type="tel"
             value={form.phone}
             onChange={handleChange}
-            required
             className="w-full p-2 border rounded"
+            placeholder="Enter your phone number (optional)"
           />
         </div>
 
@@ -242,10 +284,10 @@ export default function SignupPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={signupMutation.isPending}
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? "Creating Account..." : "Create Account"}
+          {signupMutation.isPending ? "Creating Account..." : "Create Account"}
         </button>
       </form>
 
@@ -279,6 +321,7 @@ export default function SignupPage() {
           </a>
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -37,6 +37,7 @@ export const useSignup = () => {
     onSuccess: (data) => {
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("user_data", JSON.stringify(data.user)); // Additional storage for compatibility
       queryClient.setQueryData(["user"], data.user);
     },
     onError: (error) => {

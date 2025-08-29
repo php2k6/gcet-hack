@@ -20,6 +20,7 @@ import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
 import Notification from "./pages/Notification";
 import NewIssue from "./pages/NewIssue";
+import AuthoritiesLeaderboard from "./pages/LeaderBoard";
 
 const GOOGLE_CLIENT_ID = "233711984336-lmlqdbhcc7uksgusqchb4envpb6224f8.apps.googleusercontent.com";
 
@@ -102,9 +103,10 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/report/:id" element={<Report />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/complaints/new" element={<NewIssue />} />
+              <Route path="/reportnew" element={<NewIssue />} />
               <Route path="/notifications" element={<Notification />} />
               <Route path="/complaints/:id" element={<ComplaintDetails />} />
+              <Route path="/leaderboard" element={<AuthoritiesLeaderboard  />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <Footer/>
