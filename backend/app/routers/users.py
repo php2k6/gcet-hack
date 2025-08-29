@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, desc, asc
 from typing import Optional, List
 from uuid import UUID
@@ -7,14 +7,16 @@ from datetime import datetime
 import math
 
 from app.database import get_db
-from app.models import User
+from app.models import User, Issue
 from app.auth import get_current_user
+from app.routers.issues import create_issue_response
 from app.schemas.user_schemas import (
     UserResponse,
     UserUpdateRequest,
     UserListResponse,
     UserQueryParams
 )
+from app.schemas.issue_schemas import IssueResponse
 
 router = APIRouter(
     prefix="/user",
@@ -222,3 +224,30 @@ def update_user_by_id(
     db.refresh(user)
     
     return create_user_response(user)
+
+@router.get("/issues/{user_id}", response_model=List[IssueResponse])
+def get_user_issues(
+    user_id: UUID = Path(..., description="The UUID of the user"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all issues posted by a specific user.
+    Returns a list of issues with complete details including user, authority, votes, and media.
+    """
+    # Check if user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+    
+    # Get all issues by this user with related data
+    issues = db.query(Issue).options(
+        joinedload(Issue.user),
+        joinedload(Issue.authority),
+        joinedload(Issue.votes),
+        joinedload(Issue.media)
+    ).filter(Issue.user_id == user_id).order_by(desc(Issue.created_at)).all()
+    
+    return [create_issue_response(issue) for issue in issues]

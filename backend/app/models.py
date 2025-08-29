@@ -36,8 +36,7 @@ class Authority(Base):
     contact_email = Column(String(255), nullable=False)
     contact_phone = Column(String(20), nullable=True)
     category = Column(String(100), nullable=False)  # e.g., "Water", "Roads", "Electricity"
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False) 
     # Relationships
     issues = relationship("Issue", back_populates="authority")
     user = relationship("User")

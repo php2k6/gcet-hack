@@ -15,7 +15,6 @@ The application uses the following main entities:
 - **Awards**: Recognition system for active citizens
 
 ## 📁 Project Structure
-
 ```
 backend/
 ├── app/                          # Main application package
