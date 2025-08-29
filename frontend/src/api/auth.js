@@ -2,6 +2,7 @@
 import apiClient from "../libs/axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGoogleOneTapLogin } from "@react-oauth/google";
+import { fetchGoogleProfileImage } from "../utils/googleUtils";
 
 // Auth API functions
 export const authAPI = {
@@ -69,8 +70,15 @@ export const useGoogleButtonAuth = (type = "login") => {
     console.log("🔍 Google button login success:", credentialResponse);
 
     try {
+      // Store the Google ID token for profile image extraction
+      const idToken = credentialResponse.credential;
+      localStorage.setItem("google_id_token", idToken);
+      
+      // Fetch and cache profile image from ID token
+      await fetchGoogleProfileImage(idToken);
+      
       await googleAuthMutation.mutateAsync({
-        id_token: credentialResponse.credential,
+        id_token: idToken,
         type: type,
       });
     } catch (error) {
@@ -96,10 +104,17 @@ export const useGoogleAuth = () => {
 
   return useMutation({
     mutationFn: authAPI.googleAuth,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("user_data", JSON.stringify(data.user)); // Additional storage for compatibility
+      
+      // If Google user and we have ID token, fetch profile image
+      const googleIdToken = localStorage.getItem("google_id_token");
+      if (data.user.is_google && googleIdToken) {
+        await fetchGoogleProfileImage(googleIdToken);
+      }
+      
       console.log("Google auth successful:", data.user);
       queryClient.setQueryData(["user"], data.user);
     },
@@ -117,6 +132,9 @@ export const useLogout = () => {
     onSuccess: () => {
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
+      localStorage.removeItem("user_data");
+      localStorage.removeItem("google_id_token");
+      localStorage.removeItem("profile_photo");
       queryClient.clear();
     },
     onError: (error) => {
@@ -124,6 +142,9 @@ export const useLogout = () => {
       // Clear tokens even on error
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
+      localStorage.removeItem("user_data");
+      localStorage.removeItem("google_id_token");
+      localStorage.removeItem("profile_photo");
       queryClient.clear();
     },
   });

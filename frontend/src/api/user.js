@@ -2,6 +2,7 @@
 // src/api/user.js
 import apiClient from '../libs/axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchGoogleProfileImage } from '../utils/googleUtils';
 
 // User API functions
 export const userAPI = {
@@ -37,6 +38,11 @@ export const userAPI = {
   
   getAllUsers: async (params = {}) => {
     const response = await apiClient.get('/user/all', { params });
+    return response.data;
+  },
+  
+  getUserIssues: async (userId) => {
+    const response = await apiClient.get(`/user/issues/${userId}`);
     return response.data;
   },
 };
@@ -112,5 +118,36 @@ export const useGetAllUsers = (params = {}) => {
     queryKey: ['user', 'all', params],
     queryFn: () => userAPI.getAllUsers(params),
     keepPreviousData: true,
+  });
+};
+
+export const useGetUserIssues = (userId) => {
+  return useQuery({
+    queryKey: ['user', 'issues', userId],
+    queryFn: () => userAPI.getUserIssues(userId),
+    enabled: !!userId,
+  });
+};
+
+// Hook to refresh Google profile image
+export const useRefreshGoogleProfileImage = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const googleIdToken = localStorage.getItem('google_id_token');
+      if (googleIdToken) {
+        return await fetchGoogleProfileImage(googleIdToken);
+      }
+      return null;
+    },
+    onSuccess: (profileImageUrl) => {
+      if (profileImageUrl) {
+        console.log('Google profile image refreshed:', profileImageUrl);
+        // Trigger a re-render by dispatching a custom event
+        window.dispatchEvent(new CustomEvent('profileImageUpdated', { detail: profileImageUrl }));
+      }
+    },
+    onError: (error) => {
+      console.error('Failed to refresh Google profile image:', error);
+    },
   });
 };

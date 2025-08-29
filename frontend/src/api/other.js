@@ -105,3 +105,25 @@ export const useGetAuthorityLeaderboard = () => {
     queryFn: leaderboardsAPI.getAuthorityLeaderboard,
   });
 };
+
+// src/api/heatmap.js
+// import apiClient from "../lib/axios";
+// import { useQuery } from "@tanstack/react-query";
+
+// Heatmap API functions
+export const heatmapAPI = {
+  getHeatmapData: async () => {
+    const response = await apiClient.get("/heatmap");
+    return response.data;
+  },
+};
+
+// Heatmap hooks
+export const useGetHeatmapData = () => {
+  return useQuery({
+    queryKey: ["heatmap"],
+    queryFn: heatmapAPI.getHeatmapData,
+  });
+};
+
+

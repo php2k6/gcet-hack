@@ -48,6 +48,8 @@ export const useGetAllIssues = (params = {}) => {
     queryKey: ['issues', 'all', params],
     queryFn: () => issuesAPI.getAllIssues(params),
     keepPreviousData: true,
+    // Ensure query is enabled and refetch when params change
+    enabled: true,
   });
 };
 
