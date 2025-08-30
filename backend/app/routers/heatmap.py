@@ -23,7 +23,7 @@ def get_heatmap_issues(db: Session = Depends(get_db)):
             priority=issue.priority,
             status=issue.status,
             category=issue.category,
-            radius=issue.radius
+            radius=issue.radius if issue.radius is not None else 500  # Default to 500 if NULL
         )
         for issue in issues
     ]

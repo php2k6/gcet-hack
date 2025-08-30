@@ -89,7 +89,7 @@ def create_issue_response(issue: Issue) -> IssueResponse:
         description=issue.description,
         status=issue.status,
         location=issue.location,
-        radius=issue.radius,
+        radius=issue.radius if issue.radius is not None else 500,  # Default to 500 if NULL
         created_at=issue.created_at,
         updated_at=issue.updated_at,
         priority=issue.priority,
