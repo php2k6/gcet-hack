@@ -6,13 +6,13 @@ import os
 
 def get_query_response(query, systempromptpath = "system_prompt.txt"):
     client = Client()
-    test_model = "gemini-2.5-flash-lite"
+    test_model = "gpt-4o"
     test_prompt = query
     base_dir = os.path.dirname(__file__)  # this will be 'app/' directory
     prompt_path = os.path.join(base_dir, systempromptpath)
     with open(prompt_path, "r", encoding="utf-8") as f:
         system_msg = f.read()
-    test_provider = g4f.Provider.PollinationsAI
+    test_provider = g4f.Provider.Blackbox
     response = client.chat.completions.create(
         model=test_model,
         messages=[{ "role":"system", "content" : system_msg},{"role": "user", "content": test_prompt}],

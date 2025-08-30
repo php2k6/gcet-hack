@@ -107,7 +107,8 @@ def get_issue_statistics(
         0: 'posted',
         1: 'under_review', 
         2: 'in_progress',
-        3: 'resolved'
+        3: 'resolved',
+        4: "verified"
     }
     
     for status_val, count in status_counts:
