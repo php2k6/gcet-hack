@@ -12,7 +12,7 @@ router = APIRouter(prefix="/heatmap", tags=["Heatmap"])
 def get_heatmap_issues(db: Session = Depends(get_db)):
     """
     Get all issues for heatmap display.
-    Returns a list of issues with title, location, priority, status, and category.
+    Returns a list of issues with title, location, priority, status, category, and radius.
     """
     issues = db.query(Issue).all()
     
@@ -22,7 +22,8 @@ def get_heatmap_issues(db: Session = Depends(get_db)):
             location=issue.location,
             priority=issue.priority,
             status=issue.status,
-            category=issue.category
+            category=issue.category,
+            radius=issue.radius
         )
         for issue in issues
     ]

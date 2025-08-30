@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 from uuid import UUID
 
@@ -81,6 +81,20 @@ class AuthorityLeaderboardResponse(BaseModel):
     """Response for authority leaderboard"""
     authorities: List[LeaderboardAuthorityResponse]
     total_count: int
+    
+    class Config:
+        from_attributes = True
+
+# Radius statistics schema
+class RadiusStatsResponse(BaseModel):
+    """Radius statistics response"""
+    total_issues: int = Field(..., description="Total number of issues")
+    avg_radius: float = Field(..., description="Average radius across all issues")
+    min_radius: int = Field(..., description="Minimum radius used")
+    max_radius: int = Field(..., description="Maximum radius used") 
+    most_common_radius: int = Field(..., description="Most frequently used radius")
+    radius_distribution: Dict[int, int] = Field(..., description="Distribution of radius values")
+    authority_specific: bool = Field(False, description="Whether stats are for specific authority")
     
     class Config:
         from_attributes = True

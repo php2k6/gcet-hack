@@ -159,6 +159,7 @@ class HeatmapIssueResponse(BaseModel):
     priority: int
     status: int
     category: str
+    radius: int = Field(500, description="Radius in meters for duplicate detection")
     
     class Config:
         from_attributes = True

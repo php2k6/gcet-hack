@@ -1,16 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import desc, or_
 from uuid import UUID
 from passlib.context import CryptContext
+from typing import Optional, List
+from datetime import datetime
+import math
 
 from app.database import get_db
-from app.models import Authority, User
+from app.models import Authority, User, Issue
 from app.schemas.authority_schemas import (
     AuthorityCreateRequest,
     AuthorityUpdateRequest, 
     AuthorityResponse,
     AuthorityUserResponse
 )
+from app.schemas.issue_schemas import IssueResponse, IssueListResponse
 from app.auth import get_current_user
 
 # Password hashing
@@ -233,3 +238,105 @@ def create_authority(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create authority: {str(e)}"
         )
+
+@router.get("/{authority_id}/issues", response_model=IssueListResponse)
+def get_authority_issues(
+    authority_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    status: Optional[int] = Query(None, ge=0, le=3, description="Filter by status"),
+    min_radius: Optional[int] = Query(None, ge=50, le=5000, description="Filter by minimum radius"),
+    max_radius: Optional[int] = Query(None, ge=50, le=5000, description="Filter by maximum radius"),
+    search: Optional[str] = Query(None, description="Search by title or description"),
+    created_after: Optional[datetime] = Query(None, description="Filter issues created after this date"),
+    created_before: Optional[datetime] = Query(None, description="Filter issues created before this date"),
+    limit: int = Query(10, ge=1, le=100, description="Number of results per page"),
+    page: int = Query(1, ge=1, description="Page number"),
+    sort_by: str = Query("created_at", description="Sort by field"),
+    sort_order: str = Query("desc", description="Sort order (asc, desc)")
+):
+    """
+    Get all issues for a specific authority with filtering and pagination.
+    Authority users can only access their own authority's issues.
+    Admins can access any authority's issues.
+    """
+    
+    # Check if authority exists
+    authority = db.query(Authority).options(
+        joinedload(Authority.user)
+    ).filter(Authority.id == authority_id).first()
+    
+    if not authority:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Authority not found"
+        )
+    
+    # Check permissions
+    if not check_authority_access_permission(current_user, authority):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this authority's issues"
+        )
+    
+    # Import here to avoid circular import
+    from app.routers.issues import create_issue_response
+    
+    # Build query with relationships
+    query = db.query(Issue).options(
+        joinedload(Issue.user),
+        joinedload(Issue.authority),
+        joinedload(Issue.votes),
+        joinedload(Issue.media)
+    ).filter(Issue.authority_id == authority_id)
+    
+    # Apply filters
+    if status is not None:
+        query = query.filter(Issue.status == status)
+    
+    if min_radius:
+        query = query.filter(Issue.radius >= min_radius)
+    
+    if max_radius:
+        query = query.filter(Issue.radius <= max_radius)
+    
+    if search:
+        search_filter = or_(
+            Issue.title.ilike(f"%{search}%"),
+            Issue.description.ilike(f"%{search}%")
+        )
+        query = query.filter(search_filter)
+    
+    if created_after:
+        query = query.filter(Issue.created_at >= created_after)
+    
+    if created_before:
+        query = query.filter(Issue.created_at <= created_before)
+    
+    # Get total count before pagination
+    total = query.count()
+    
+    # Apply sorting
+    sort_column = getattr(Issue, sort_by, Issue.created_at)
+    if sort_order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    issues = query.offset(offset).limit(limit).all()
+    
+    # Calculate total pages
+    total_pages = math.ceil(total / limit) if total > 0 else 1
+    
+    # Convert to response models
+    issue_responses = [create_issue_response(issue) for issue in issues]
+    
+    return IssueListResponse(
+        issues=issue_responses,
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=total_pages
+    )

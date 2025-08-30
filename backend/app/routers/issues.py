@@ -623,6 +623,8 @@ def get_all_issues(
     district: Optional[str] = Query(None, description="Filter by district"),
     category: Optional[str] = Query(None, description="Filter by category"),
     status: Optional[int] = Query(None, ge=0, le=3, description="Filter by status"),
+    min_radius: Optional[int] = Query(None, ge=50, le=5000, description="Filter by minimum radius"),
+    max_radius: Optional[int] = Query(None, ge=50, le=5000, description="Filter by maximum radius"),
     search: Optional[str] = Query(None, description="Search by title or description"),
     created_after: Optional[datetime] = Query(None, description="Filter issues created after this date"),
     created_before: Optional[datetime] = Query(None, description="Filter issues created before this date"),
@@ -650,6 +652,12 @@ def get_all_issues(
     
     if status is not None:
         query = query.filter(Issue.status == status)
+    
+    if min_radius:
+        query = query.filter(Issue.radius >= min_radius)
+    
+    if max_radius:
+        query = query.filter(Issue.radius <= max_radius)
     
     if search:
         search_filter = or_(
