@@ -138,7 +138,7 @@ def delete_authority(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete authority by UUID (admin only)"""
+    """Delete authority by UUID (admin only) - Force cascading delete of all related data"""
     
     # Only admin can delete authorities
     if current_user.role != 2:
@@ -155,21 +155,63 @@ def delete_authority(
             detail="Authority not found"
         )
     
-    # Check if authority has associated issues
-    from app.models import Issue
-    issue_count = db.query(Issue).filter(Issue.authority_id == authority_id).count()
-    
-    if issue_count > 0:
+    try:
+        # Import all required models
+        from app.models import Issue, Vote, Media, Notification
+        
+        # Get all issues for this authority
+        issues = db.query(Issue).filter(Issue.authority_id == authority_id).all()
+        issue_ids = [issue.id for issue in issues]
+        
+        if issue_ids:
+            # Delete all votes for these issues
+            vote_count = db.query(Vote).filter(Vote.issue_id.in_(issue_ids)).count()
+            db.query(Vote).filter(Vote.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+            
+            # Delete all media for these issues
+            media_count = db.query(Media).filter(Media.issue_id.in_(issue_ids)).count()
+            db.query(Media).filter(Media.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+            
+            # Delete all notifications for these issues
+            notification_count = db.query(Notification).filter(Notification.issue_id.in_(issue_ids)).count()
+            db.query(Notification).filter(Notification.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+            
+            # Delete all issues for this authority
+            issue_count = len(issues)
+            db.query(Issue).filter(Issue.authority_id == authority_id).delete(synchronize_session=False)
+            
+            print(f"Cascade delete for authority {authority_id}: {issue_count} issues, {vote_count} votes, {media_count} media files, {notification_count} notifications")
+        
+        # Get the authority user for potential deletion
+        authority_user_id = authority.user_id
+        
+        # Delete the authority record
+        db.delete(authority)
+        
+        # Optionally delete the associated authority user account if they have no other roles
+        # (You might want to keep the user account for audit purposes)
+        authority_user = db.query(User).filter(User.id == authority_user_id).first()
+        if authority_user and authority_user.role == 1:  # Role 1 = Authority user
+            # Check if this user has any other authorities (shouldn't happen, but safety check)
+            other_authorities = db.query(Authority).filter(Authority.user_id == authority_user_id).count()
+            if other_authorities == 0:
+                # Delete user's remaining notifications and votes (if any)
+                db.query(Notification).filter(Notification.user_id == authority_user_id).delete(synchronize_session=False)
+                db.query(Vote).filter(Vote.user_id == authority_user_id).delete(synchronize_session=False)
+                
+                # Delete the authority user account
+                db.delete(authority_user)
+                print(f"Also deleted authority user account: {authority_user.email}")
+        
+        db.commit()
+        return
+        
+    except Exception as e:
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot delete authority with {issue_count} associated issues. Please reassign or delete issues first."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete authority: {str(e)}"
         )
-    
-    # Delete the authority
-    db.delete(authority)
-    db.commit()
-    
-    return
 
 @router.post("/create-authority", response_model=AuthorityResponse, status_code=status.HTTP_201_CREATED)
 def create_authority(
