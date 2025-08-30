@@ -50,7 +50,8 @@ class Issue(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     status = Column(Integer, default=0)  # 0: open, 1: in progress, 2: resolved, 3: closed
-    location = Column(String(255), nullable=False)
+    location = Column(String(255), nullable=False)  # Format: "latitude,longitude"
+    radius = Column(Integer, default=500)  # Radius in meters for duplicate detection
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     priority = Column(Integer, default=1)  # 1: low, 2: medium, 3: high, 4: urgent

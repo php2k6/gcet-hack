@@ -19,6 +19,7 @@ from app.schemas.issue_schemas import (
     IssueUpdateRequest, 
     IssueResponse, 
     IssueCreateResponse,
+    IssueDuplicateResponse,
     IssueListResponse,
     IssueUserResponse,
     IssueAuthorityResponse,
@@ -88,6 +89,7 @@ def create_issue_response(issue: Issue) -> IssueResponse:
         description=issue.description,
         status=issue.status,
         location=issue.location,
+        radius=issue.radius,
         created_at=issue.created_at,
         updated_at=issue.updated_at,
         priority=issue.priority,
@@ -222,6 +224,131 @@ def check_issue_edit_permission(current_user: User, issue: Issue):
     
     return False
 
+def get_radius_from_text(description: str):
+    """Get the radius from issue description"""
+    try:
+        result = get_query_response(description,"system_prompt3.txt")
+        # Extract number from AI response, default to 500 if parsing fails
+        import re
+        numbers = re.findall(r'\d+', result)
+        if numbers:
+            radius = int(numbers[0])
+            # Ensure radius is within reasonable bounds
+            return max(50, min(5000, radius))
+        return 500  # Default radius
+    except Exception as e:
+        print(f"Radius detection failed: {e}")
+        return 500  # Default radius
+
+def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate distance between two points using Haversine formula (in meters)"""
+    import math
+    
+    # Convert latitude and longitude from degrees to radians
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    
+    # Haversine formula
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    
+    # Radius of earth in meters
+    r = 6371000
+    
+    return c * r
+
+def parse_location_coordinates(location: str) -> tuple[float, float]:
+    """Parse location string to extract latitude and longitude"""
+    try:
+        # Expected format: "latitude,longitude"
+        parts = location.strip().split(',')
+        if len(parts) == 2:
+            lat = float(parts[0].strip())
+            lon = float(parts[1].strip())
+            return lat, lon
+        else:
+            raise ValueError("Invalid location format")
+    except (ValueError, IndexError) as e:
+        raise ValueError(f"Cannot parse location '{location}'. Expected format: 'latitude,longitude'")
+
+def check_duplicate_issue(
+    category: str, 
+    district: str, 
+    location: str, 
+    radius: int, 
+    current_user_id: UUID, 
+    db: Session
+) -> Optional[Issue]:
+    """
+    Check if there's already an existing issue of the same category and district 
+    within the specified radius from the given location.
+    Returns the existing issue if found, None otherwise.
+    """
+    try:
+        # Parse the new issue location
+        new_lat, new_lon = parse_location_coordinates(location)
+        
+        # Get all open issues of the same category in the same district
+        existing_issues = db.query(Issue).join(Authority).filter(
+            Issue.category == category,
+            Authority.district == district,
+            Issue.status.in_([0, 1])  # Only open and in-progress issues
+        ).all()
+        
+        # Check distance for each existing issue
+        for existing_issue in existing_issues:
+            try:
+                existing_lat, existing_lon = parse_location_coordinates(existing_issue.location)
+                
+                # Calculate distance between locations
+                distance = calculate_distance(new_lat, new_lon, existing_lat, existing_lon)
+                
+                # Check if within either issue's radius (use the larger radius)
+                max_radius = max(radius, existing_issue.radius)
+                
+                if distance <= max_radius:
+                    return existing_issue
+                    
+            except ValueError:
+                # Skip issues with invalid location format
+                continue
+                
+        return None
+        
+    except ValueError as e:
+        # If we can't parse the new location, we can't check for duplicates
+        print(f"Location parsing error: {e}")
+        return None
+
+def auto_upvote_issue(issue: Issue, user_id: UUID, db: Session) -> bool:
+    """
+    Automatically upvote an existing issue if the user hasn't already voted.
+    Returns True if vote was created, False if user already voted.
+    """
+    # Check if user has already voted for this issue
+    existing_vote = db.query(Vote).filter(
+        Vote.user_id == user_id,
+        Vote.issue_id == issue.id
+    ).first()
+    
+    if existing_vote:
+        return False  # User already voted
+    
+    # Create new vote
+    new_vote = Vote(
+        user_id=user_id,
+        issue_id=issue.id
+    )
+    
+    db.add(new_vote)
+    db.commit()
+    return True
+def is_spam_from_text(description: str):
+    """Check if the issue description is spam"""
+    result = get_query_response(description,"system_prompt4.txt")
+    return result;
+
 def create_issue_data(
     request: IssueCreateRequest, 
     user_id: UUID, 
@@ -238,6 +365,9 @@ def create_issue_data(
     # Get AI-generated priority
     ai_priority = get_priority_from_text(request.description)
     
+    # Get AI-generated radius or use provided radius
+    ai_radius = request.radius if request.radius else get_radius_from_text(request.description)
+    
     # Create the internal data model
     return IssueCreateData(
         user_id=user_id,
@@ -245,6 +375,7 @@ def create_issue_data(
         title=request.title,
         description=request.description,
         location=request.location,
+        radius=ai_radius,
         district=request.district,
         category=ai_category,
         priority=ai_priority,
@@ -276,18 +407,64 @@ def create_notification_for_user(issue: Issue, db: Session):
     )
     db.add(notification)
 
-@router.post("/", response_model=IssueCreateResponse, status_code=201)
+@router.post("/", status_code=201)
 def create_issue(
     issue_data: IssueCreateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a new issue with AI-powered category and priority detection"""
+    """Create a new issue with AI-powered category and priority detection, and duplicate checking"""
+    
+    # Check for spam first
+    spam_result = is_spam_from_text(issue_data.description)
+    if "SPAM" in spam_result.upper():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Issue rejected as spam: {spam_result}"
+        )
     
     # Convert API request to internal data model with AI processing
     internal_issue_data = create_issue_data(issue_data, current_user.id, db)
     
-    # Create new issue using the internal data model
+    # Check for duplicate issues within radius
+    duplicate_issue = check_duplicate_issue(
+        category=internal_issue_data.category,
+        district=internal_issue_data.district,
+        location=internal_issue_data.location,
+        radius=internal_issue_data.radius,
+        current_user_id=current_user.id,
+        db=db
+    )
+    
+    if duplicate_issue:
+        # Load relationships for the existing issue
+        existing_issue_with_relations = db.query(Issue).options(
+            joinedload(Issue.user),
+            joinedload(Issue.authority),
+            joinedload(Issue.votes),
+            joinedload(Issue.media)
+        ).filter(Issue.id == duplicate_issue.id).first()
+        
+        # Auto-upvote the existing issue
+        auto_upvoted = auto_upvote_issue(duplicate_issue, current_user.id, db)
+        
+        # Calculate distance for response
+        try:
+            new_lat, new_lon = parse_location_coordinates(internal_issue_data.location)
+            existing_lat, existing_lon = parse_location_coordinates(duplicate_issue.location)
+            distance = calculate_distance(new_lat, new_lon, existing_lat, existing_lon)
+        except ValueError:
+            distance = 0.0
+        
+        # Return duplicate response
+        return IssueDuplicateResponse(
+            message=f"Similar issue already exists within {internal_issue_data.radius}m radius. Your vote has been {'added' if auto_upvoted else 'already recorded'}.",
+            existing_issue=create_issue_response(existing_issue_with_relations),
+            auto_upvoted=auto_upvoted,
+            distance_meters=round(distance, 2)
+        )
+    
+    # No duplicate found, create new issue
     new_issue = Issue(**internal_issue_data.to_issue_dict())
     
     db.add(new_issue)
