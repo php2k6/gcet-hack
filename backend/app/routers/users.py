@@ -57,10 +57,86 @@ def delete_current_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete logged-in user account"""
-    db.delete(current_user)
-    db.commit()
-    return
+    """Delete logged-in user account - Force cascading delete of all related data"""
+    
+    try:
+        # Import all required models
+        from app.models import Issue, Vote, Media, Notification, Authority
+        
+        # If user is an authority, handle authority deletion first
+        if current_user.role == 1:  # Authority user
+            authority = db.query(Authority).filter(Authority.user_id == current_user.id).first()
+            if authority:
+                # Get all issues for this authority
+                issues = db.query(Issue).filter(Issue.authority_id == authority.id).all()
+                issue_ids = [issue.id for issue in issues]
+                
+                if issue_ids:
+                    # Delete all votes for these issues
+                    vote_count = db.query(Vote).filter(Vote.issue_id.in_(issue_ids)).count()
+                    db.query(Vote).filter(Vote.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+                    
+                    # Delete all media for these issues
+                    media_count = db.query(Media).filter(Media.issue_id.in_(issue_ids)).count()
+                    db.query(Media).filter(Media.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+                    
+                    # Delete all notifications for these issues
+                    notification_count = db.query(Notification).filter(Notification.issue_id.in_(issue_ids)).count()
+                    db.query(Notification).filter(Notification.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+                    
+                    # Delete all issues for this authority
+                    issue_count = len(issues)
+                    db.query(Issue).filter(Issue.authority_id == authority.id).delete(synchronize_session=False)
+                    
+                    print(f"Cascade delete for authority user: {issue_count} issues, {vote_count} votes, {media_count} media files, {notification_count} notifications")
+                
+                # Delete the authority record
+                db.delete(authority)
+        
+        # For regular users, delete their issues and all related data
+        user_issues = db.query(Issue).filter(Issue.user_id == current_user.id).all()
+        user_issue_ids = [issue.id for issue in user_issues]
+        
+        if user_issue_ids:
+            # Delete all votes for user's issues
+            vote_count = db.query(Vote).filter(Vote.issue_id.in_(user_issue_ids)).count()
+            db.query(Vote).filter(Vote.issue_id.in_(user_issue_ids)).delete(synchronize_session=False)
+            
+            # Delete all media for user's issues
+            media_count = db.query(Media).filter(Media.issue_id.in_(user_issue_ids)).count()
+            db.query(Media).filter(Media.issue_id.in_(user_issue_ids)).delete(synchronize_session=False)
+            
+            # Delete all notifications for user's issues
+            notification_count = db.query(Notification).filter(Notification.issue_id.in_(user_issue_ids)).count()
+            db.query(Notification).filter(Notification.issue_id.in_(user_issue_ids)).delete(synchronize_session=False)
+            
+            # Delete user's issues
+            issue_count = len(user_issues)
+            db.query(Issue).filter(Issue.user_id == current_user.id).delete(synchronize_session=False)
+            
+            print(f"Cascade delete for user issues: {issue_count} issues, {vote_count} votes, {media_count} media files, {notification_count} notifications")
+        
+        # Delete user's votes on other issues
+        user_votes_count = db.query(Vote).filter(Vote.user_id == current_user.id).count()
+        db.query(Vote).filter(Vote.user_id == current_user.id).delete(synchronize_session=False)
+        
+        # Delete user's notifications
+        user_notifications_count = db.query(Notification).filter(Notification.user_id == current_user.id).count()
+        db.query(Notification).filter(Notification.user_id == current_user.id).delete(synchronize_session=False)
+        
+        print(f"Deleted user's votes: {user_votes_count}, notifications: {user_notifications_count}")
+        
+        # Finally delete the user
+        db.delete(current_user)
+        db.commit()
+        return
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete user: {str(e)}"
+        )
 
 @router.patch("/me", response_model=UserResponse)
 def update_current_user(
@@ -175,7 +251,7 @@ def delete_user_by_id(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete user by UUID (admin only)"""
+    """Delete user by UUID (admin only) - Force cascading delete of all related data"""
     check_admin_permission(current_user)
     
     # Prevent admin from deleting themselves
@@ -193,9 +269,84 @@ def delete_user_by_id(
             detail="User not found"
         )
     
-    db.delete(user)
-    db.commit()
-    return
+    try:
+        # Import all required models
+        from app.models import Issue, Vote, Media, Notification, Authority
+        
+        # If user is an authority, handle authority deletion first
+        if user.role == 1:  # Authority user
+            authority = db.query(Authority).filter(Authority.user_id == user.id).first()
+            if authority:
+                # Get all issues for this authority
+                issues = db.query(Issue).filter(Issue.authority_id == authority.id).all()
+                issue_ids = [issue.id for issue in issues]
+                
+                if issue_ids:
+                    # Delete all votes for these issues
+                    vote_count = db.query(Vote).filter(Vote.issue_id.in_(issue_ids)).count()
+                    db.query(Vote).filter(Vote.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+                    
+                    # Delete all media for these issues
+                    media_count = db.query(Media).filter(Media.issue_id.in_(issue_ids)).count()
+                    db.query(Media).filter(Media.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+                    
+                    # Delete all notifications for these issues
+                    notification_count = db.query(Notification).filter(Notification.issue_id.in_(issue_ids)).count()
+                    db.query(Notification).filter(Notification.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+                    
+                    # Delete all issues for this authority
+                    issue_count = len(issues)
+                    db.query(Issue).filter(Issue.authority_id == authority.id).delete(synchronize_session=False)
+                    
+                    print(f"Cascade delete for authority user {user_id}: {issue_count} issues, {vote_count} votes, {media_count} media files, {notification_count} notifications")
+                
+                # Delete the authority record
+                db.delete(authority)
+        
+        # For regular users, delete their issues and all related data
+        user_issues = db.query(Issue).filter(Issue.user_id == user.id).all()
+        user_issue_ids = [issue.id for issue in user_issues]
+        
+        if user_issue_ids:
+            # Delete all votes for user's issues
+            vote_count = db.query(Vote).filter(Vote.issue_id.in_(user_issue_ids)).count()
+            db.query(Vote).filter(Vote.issue_id.in_(user_issue_ids)).delete(synchronize_session=False)
+            
+            # Delete all media for user's issues
+            media_count = db.query(Media).filter(Media.issue_id.in_(user_issue_ids)).count()
+            db.query(Media).filter(Media.issue_id.in_(user_issue_ids)).delete(synchronize_session=False)
+            
+            # Delete all notifications for user's issues
+            notification_count = db.query(Notification).filter(Notification.issue_id.in_(user_issue_ids)).count()
+            db.query(Notification).filter(Notification.issue_id.in_(user_issue_ids)).delete(synchronize_session=False)
+            
+            # Delete user's issues
+            issue_count = len(user_issues)
+            db.query(Issue).filter(Issue.user_id == user.id).delete(synchronize_session=False)
+            
+            print(f"Cascade delete for user {user_id} issues: {issue_count} issues, {vote_count} votes, {media_count} media files, {notification_count} notifications")
+        
+        # Delete user's votes on other issues
+        user_votes_count = db.query(Vote).filter(Vote.user_id == user.id).count()
+        db.query(Vote).filter(Vote.user_id == user.id).delete(synchronize_session=False)
+        
+        # Delete user's notifications
+        user_notifications_count = db.query(Notification).filter(Notification.user_id == user.id).count()
+        db.query(Notification).filter(Notification.user_id == user.id).delete(synchronize_session=False)
+        
+        print(f"Deleted user {user_id} votes: {user_votes_count}, notifications: {user_notifications_count}")
+        
+        # Finally delete the user
+        db.delete(user)
+        db.commit()
+        return
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete user: {str(e)}"
+        )
 
 @router.patch("/{user_id}", response_model=UserResponse)
 def update_user_by_id(

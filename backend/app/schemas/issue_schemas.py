@@ -31,8 +31,9 @@ class IssueCreateRequest(BaseModel):
     #authority_id: UUID4 = Field(..., description="Authority responsible for this issue")
     title: str = Field(..., min_length=5, max_length=255, description="Issue title")
     description: str = Field(..., min_length=10, description="Detailed description of the issue")
-    location: str = Field(..., min_length=3, max_length=255, description="Location where issue occurred")
+    location: str = Field(..., min_length=3, max_length=255, description="Location where issue occurred (format: 'latitude,longitude')")
     district: str = Field(..., min_length=2, max_length=100, description="District where issue occurred")
+    # Note: radius is automatically determined by AI from the description
     #category: str = Field(..., min_length=2, max_length=100, description="Issue category")
     #priority: Optional[int] = Field(1, ge=1, le=4, description="Priority level (1=low, 2=medium, 3=high, 4=urgent)")
 
@@ -44,7 +45,8 @@ class IssueCreateData(BaseModel):
     authority_id: UUID4  # Authority ID resolved from category and district
     title: str
     description: str
-    location: str
+    location: str  # Format: "latitude,longitude"
+    radius: int = 500  # Radius in meters for duplicate detection
     district: str  # Additional field used for authority lookup (not stored in DB)
     category: str  # AI-detected category
     priority: int  # AI-detected priority
@@ -61,6 +63,7 @@ class IssueCreateData(BaseModel):
             "title": self.title,
             "description": self.description,
             "location": self.location,
+            "radius": self.radius,
             "category": self.category,
             "priority": self.priority,
             "status": self.status
@@ -69,7 +72,8 @@ class IssueCreateData(BaseModel):
 class IssueUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, min_length=5, max_length=255, description="Updated issue title")
     description: Optional[str] = Field(None, min_length=10, description="Updated description")
-    location: Optional[str] = Field(None, min_length=3, max_length=255, description="Updated location")
+    location: Optional[str] = Field(None, min_length=3, max_length=255, description="Updated location (format: 'latitude,longitude')")
+    radius: Optional[int] = Field(None, ge=50, le=5000, description="Updated radius in meters for duplicate detection")
     category: Optional[str] = Field(None, min_length=2, max_length=100, description="Updated category")
     priority: Optional[int] = Field(None, ge=1, le=4, description="Updated priority level")
     status: Optional[int] = Field(None, ge=0, le=3, description="Updated status (0=open, 1=in_progress, 2=resolved, 3=closed)")
@@ -105,6 +109,7 @@ class IssueResponse(BaseModel):
     description: str
     status: int
     location: str
+    radius: int = Field(500, description="Radius in meters for duplicate detection")
     created_at: datetime
     updated_at: datetime
     priority: int
@@ -127,6 +132,15 @@ class IssueCreateResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class IssueDuplicateResponse(BaseModel):
+    message: str
+    existing_issue: IssueResponse
+    auto_upvoted: bool = Field(..., description="Whether the user's vote was automatically added")
+    distance_meters: float = Field(..., description="Distance from the new location to existing issue")
+    
+    class Config:
+        from_attributes = True
+
 # List response with pagination
 class IssueListResponse(BaseModel):
     issues: List[IssueResponse]
@@ -145,6 +159,7 @@ class HeatmapIssueResponse(BaseModel):
     priority: int
     status: int
     category: str
+    radius: int = Field(500, description="Radius in meters for duplicate detection")
     
     class Config:
         from_attributes = True

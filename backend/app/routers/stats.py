@@ -14,7 +14,8 @@ from app.schemas.stats_schemas import (
     CitizenLeaderboardResponse,
     AuthorityLeaderboardResponse,
     LeaderboardCitizenResponse,
-    LeaderboardAuthorityResponse
+    LeaderboardAuthorityResponse,
+    RadiusStatsResponse
 )
 
 router = APIRouter(
@@ -210,3 +211,80 @@ def get_authority_leaderboard(
             authorities=[],
             total_count=0
         )
+
+@router.get("/stats/radius", response_model=RadiusStatsResponse)
+def get_radius_statistics(
+    authority_id: Optional[uuid.UUID] = Query(None, description="Filter by specific authority"),
+    min_radius: Optional[int] = Query(None, ge=50, le=5000, description="Filter by minimum radius"),
+    max_radius: Optional[int] = Query(None, ge=50, le=5000, description="Filter by maximum radius"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get radius-based statistics for issues.
+    Shows distribution of radius values and their effectiveness.
+    """
+    
+    # Check permissions
+    has_access, forced_authority_id = check_admin_or_authority_access(current_user, authority_id)
+    
+    # If user is authority, override authority_id with their authority
+    if current_user.role == 1 and forced_authority_id:
+        user_authority = db.query(Authority).filter(Authority.user_id == current_user.id).first()
+        if not user_authority:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No authority found for current user"
+            )
+        authority_id = user_authority.id
+    
+    # Build query filters
+    query = db.query(Issue)
+    
+    # Apply filters
+    if authority_id:
+        query = query.filter(Issue.authority_id == authority_id)
+    
+    if min_radius:
+        query = query.filter(Issue.radius >= min_radius)
+    
+    if max_radius:
+        query = query.filter(Issue.radius <= max_radius)
+    
+    # Get radius distribution
+    radius_distribution = (
+        query.with_entities(Issue.radius, func.count(Issue.id))
+        .group_by(Issue.radius)
+        .order_by(Issue.radius)
+        .all()
+    )
+    
+    # Calculate statistics
+    all_radii = query.with_entities(Issue.radius).all()
+    radii_values = [r[0] for r in all_radii]
+    
+    if radii_values:
+        avg_radius = sum(radii_values) / len(radii_values)
+        min_radius_used = min(radii_values)
+        max_radius_used = max(radii_values)
+        total_issues = len(radii_values)
+    else:
+        avg_radius = 0
+        min_radius_used = 0
+        max_radius_used = 0
+        total_issues = 0
+    
+    # Get most common radius
+    most_common_radius = 500  # default
+    if radius_distribution:
+        most_common_radius = max(radius_distribution, key=lambda x: x[1])[0]
+    
+    return RadiusStatsResponse(
+        total_issues=total_issues,
+        avg_radius=round(avg_radius, 2),
+        min_radius=min_radius_used,
+        max_radius=max_radius_used,
+        most_common_radius=most_common_radius,
+        radius_distribution=dict(radius_distribution),
+        authority_specific=authority_id is not None
+    )
