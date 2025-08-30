@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, case
 from typing import Optional, List
 from datetime import datetime, timedelta
 import uuid
@@ -105,9 +105,8 @@ def get_issue_statistics(
     status_mapping = {
         0: 'posted',
         1: 'under_review', 
-        2: 'in progress',
-        3: 'resolved',
-        4: 'verified'
+        2: 'in_progress',
+        3: 'resolved'
     }
     
     for status_val, count in status_counts:
@@ -133,73 +132,6 @@ def get_issue_statistics(
         authority_name=authority_name
     )
 
-@router.get("/leaderboards/citizen", response_model=CitizenLeaderboardResponse)
-def get_citizen_leaderboard(
-    limit: int = Query(10, ge=1, le=100, description="Number of citizens to return"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Get citizen leaderboard based on number of issues reported.
-    Available to all authenticated users.
-    """
-    
-    try:
-        # Query to get citizen statistics
-        citizen_stats = (
-            db.query(
-                User.id,
-                User.name,
-                User.email,
-                User.district,
-                func.count(Issue.id).label('total_issues'),
-                func.sum(func.case([(Issue.status == 2, 1)], else_=0)).label('resolved_issues'),
-                func.sum(func.case([(Issue.status.in_([0, 1]), 1)], else_=0)).label('pending_issues'),
-                func.max(Issue.created_at).label('last_issue_date')
-            )
-            .outerjoin(Issue, User.id == Issue.user_id)  # Use outer join to include users with no issues
-            .filter(User.role == 0)  # Only citizens
-            .group_by(User.id, User.name, User.email, User.district)
-            .having(func.count(Issue.id) > 0)  # Only users with at least one issue
-            .order_by(func.count(Issue.id).desc())
-            .limit(limit)
-            .all()
-        )
-        
-        # Convert to response format
-        leaderboard_citizens = []
-        for stats in citizen_stats:
-            total = int(stats.total_issues) if stats.total_issues else 0
-            resolved = int(stats.resolved_issues) if stats.resolved_issues else 0
-            pending = int(stats.pending_issues) if stats.pending_issues else 0
-            success_rate = (resolved / total * 100) if total > 0 else 0.0
-            
-            citizen = LeaderboardCitizenResponse(
-                id=stats.id,
-                name=stats.name,
-                email=stats.email,
-                district=stats.district,
-                total_issues=total,
-                resolved_issues=resolved,
-                pending_issues=pending,
-                success_rate=round(success_rate, 2),
-                last_issue_date=stats.last_issue_date
-            )
-            leaderboard_citizens.append(citizen)
-        
-        return CitizenLeaderboardResponse(
-            citizens=leaderboard_citizens,
-            total_count=len(leaderboard_citizens)
-        )
-        
-    except Exception as e:
-        print(f"❌ Citizen leaderboard error: {str(e)}")
-        # Return empty leaderboard on error
-        return CitizenLeaderboardResponse(
-            citizens=[],
-            total_count=0
-        )
-
 @router.get("/leaderboards/authority", response_model=AuthorityLeaderboardResponse)
 def get_authority_leaderboard(
     limit: int = Query(10, ge=1, le=100, description="Number of authorities to return"),
@@ -212,7 +144,14 @@ def get_authority_leaderboard(
     """
     
     try:
-        # Query to get authority statistics
+        # Query to get authority statistics (only include authorities with at least one resolved issue -> status == 3)
+        resolved_case = case((Issue.status == 3, 1), else_=0)
+        pending_case = case((Issue.status.in_([0, 1, 2]), 1), else_=0)  # everything not resolved counts as pending
+        avg_resolution_days_case = case(
+            (Issue.status == 3, func.extract('epoch', Issue.updated_at - Issue.created_at) / 86400),
+            else_=None,
+        )
+
         authority_stats = (
             db.query(
                 Authority.id,
@@ -221,20 +160,17 @@ def get_authority_leaderboard(
                 Authority.category,
                 Authority.contact_email,
                 func.count(Issue.id).label('total_issues'),
-                func.sum(func.case([(Issue.status == 2, 1)], else_=0)).label('resolved_issues'),
-                func.sum(func.case([(Issue.status.in_([0, 1]), 1)], else_=0)).label('pending_issues'),
-                func.avg(
-                    func.case([
-                        (Issue.status == 2, 
-                         func.extract('epoch', Issue.updated_at - Issue.created_at) / 86400)
-                    ])
-                ).label('avg_resolution_days'),
+                func.sum(resolved_case).label('resolved_issues'),
+                func.sum(pending_case).label('pending_issues'),
+                func.avg(avg_resolution_days_case).label('avg_resolution_days'),
                 func.max(Issue.updated_at).label('last_activity_date')
             )
-            .outerjoin(Issue, Authority.id == Issue.authority_id)  # Use outer join
+            .outerjoin(Issue, Authority.id == Issue.authority_id)
             .group_by(Authority.id, Authority.name, Authority.district, Authority.category, Authority.contact_email)
-            .having(func.count(Issue.id) > 0)  # Only authorities with at least one issue
-            .order_by(func.count(Issue.id).desc())
+            # only authorities with at least one resolved issue
+            .having(func.sum(resolved_case) > 0)
+            # order primarily by resolved issues desc, then by avg resolution time asc (faster first)
+            .order_by(func.sum(resolved_case).desc(), func.avg(avg_resolution_days_case).asc().nulls_last())
             .limit(limit)
             .all()
         )

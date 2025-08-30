@@ -49,7 +49,7 @@ class Issue(Base):
     authority_id = Column(UUID(as_uuid=True), ForeignKey("authorities.id"), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
-    status = Column(Integer, default=0)  # 0: open, 1: in progress, 2: resolved, 3: closed
+    status = Column(Integer, default=0)  # 0: posted, 1: under review ,  2: in progress, 3: resolved
     location = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
