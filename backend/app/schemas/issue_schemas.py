@@ -33,7 +33,7 @@ class IssueCreateRequest(BaseModel):
     description: str = Field(..., min_length=10, description="Detailed description of the issue")
     location: str = Field(..., min_length=3, max_length=255, description="Location where issue occurred (format: 'latitude,longitude')")
     district: str = Field(..., min_length=2, max_length=100, description="District where issue occurred")
-    radius: Optional[int] = Field(500, ge=50, le=5000, description="Radius in meters for duplicate detection (default: 500m)")
+    # Note: radius is automatically determined by AI from the description
     #category: str = Field(..., min_length=2, max_length=100, description="Issue category")
     #priority: Optional[int] = Field(1, ge=1, le=4, description="Priority level (1=low, 2=medium, 3=high, 4=urgent)")
 

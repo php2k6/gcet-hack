@@ -365,8 +365,8 @@ def create_issue_data(
     # Get AI-generated priority
     ai_priority = get_priority_from_text(request.description)
     
-    # Get AI-generated radius or use provided radius
-    ai_radius = request.radius if request.radius else get_radius_from_text(request.description)
+    # Get AI-generated radius (always use AI, no user input)
+    ai_radius = get_radius_from_text(request.description)
     
     # Create the internal data model
     return IssueCreateData(
@@ -407,7 +407,7 @@ def create_notification_for_user(issue: Issue, db: Session):
     )
     db.add(notification)
 
-@router.post("/", status_code=201)
+@router.post("/", response_model=IssueCreateResponse, status_code=201)
 def create_issue(
     issue_data: IssueCreateRequest,
     current_user: User = Depends(get_current_user),
